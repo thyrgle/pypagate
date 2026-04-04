@@ -21,7 +21,7 @@ The core idea in this library is that the cells in Excel which contain data we m
 
 Let us look at a small example:
 
-``py
+```py
 >>> from pypagate import Term
 >>> x = Term(5)
 >>> y = x + 1
@@ -42,7 +42,7 @@ An [event listener](https://aws.amazon.com/what-is/event-listener/) is a constru
 
 Consider we have a `player` object that has some health:
 
-```
+```py
 >>> from pypagate import Term
 >>> class Player:
 ...     def __init__(self, health):
