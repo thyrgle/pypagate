@@ -109,11 +109,11 @@ class Formula:
         return evaluate(self)
 
     def __str__(self):
+        global __bin_str_map
+        global __unary_str_map
         if not self.bin_op:
-            return __unary_str_map[self.unary_op] + " " + str(self._rhs)
-        return str(self._lhs) + " " \
-             + __bin_str_map[self.bin_op] + " " \
-             + str(self._rhs)
+            return __unary_str_map[self.unary_op] + " (" + str(self._rhs) + ")"
+        return f"({str(self._lhs)}) {__bin_str_map[self.bin_op]} ({str(self._rhs)})"
 
     # Binary operations
     __add__ = _register_bin_op(operator.add)
