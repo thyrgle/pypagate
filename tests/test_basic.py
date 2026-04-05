@@ -20,12 +20,15 @@ def test_two_terms():
 
 def test_func_listen():
     y = 0
+    assert y == 0
     x = Term(1)
     @fire_on(x == 3)
     def f():
         nonlocal y
         y = 3
+    assert y == 0
     x += 1
+    assert x.unwrap() == 2
     assert y == 0
     x += 1
     assert y == 3

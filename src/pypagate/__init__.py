@@ -49,6 +49,41 @@ __unary_str_map = {
 }
 
 
+# Similar to here https://stackoverflow.com/a/7844038/667648
+def _register_bin_op(bin_op):
+    """Helper function intended to help construct binary operations (like 
+    __add__) for Formula and Term."""
+    def b(self, other):
+        if isinstance(other, Number):
+            other = Term(other)
+        formula = Formula(bin_op=bin_op, _lhs=self, _rhs=other)
+        self._parents.append(formula)
+        other._parents.append(formula)
+        return formula
+    return b
+
+def _register_rbin_op(bin_op):
+    """Helper function intended to help construct binary operations (like 
+    __radd__) for Formula and Term."""
+    def b(self, other):
+        if isinstance(other, Number):
+            other = Term(other)
+        # Order of params are switched for the r version!
+        formula = Formula(bin_op=bin_op, _lhs=other, _rhs=self)
+        self._parents.append(formula)
+        other._parents.append(formula)
+        return formula
+    return b
+
+def _register_unary_op(unary_op):
+    """Helper function inteded to help construct unary operations (like
+    __abs__) for Formula and Term."""
+    def u(self):
+        formula = Formula(unary_op=unary_op, _rhs=self)
+        self._parents.append(formula)
+        return formula
+    return u 
+
 @dataclass
 class Formula:
     unary_op: Callable[[Any], Any] = None
@@ -81,88 +116,29 @@ class Formula:
              + str(self._rhs)
 
     # Binary operations
-    def __add__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.add, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __radd__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.add, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __mul__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.mul, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rmul__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.mul, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __truediv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.truediv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rtruediv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.truediv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __floordiv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.floordiv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rfloordiv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.floordiv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __xor__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.xor, _lhs=self, _rhs=other)
-        other._parents.append(formula)
-        return formula
-
-    def __rxor__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.xor, _lhs=self, _rhs=other)
-        other._parents.append(formula)
-        return formula
+    __add__ = _register_bin_op(operator.add)
+    __radd__ = _register_rbin_op(operator.add)
+    __mul__ = _register_bin_op(operator.mul)
+    __rmul__ = _register_rbin_op(operator.mul)
+    __truediv__ = _register_bin_op(operator.truediv)
+    __rtruediv__ = _register_rbin_op(operator.truediv)
+    __floordiv__ = _register_bin_op(operator.floordiv)
+    __rfloordiv__ = _register_rbin_op(operator.floordiv)
+    __xor__ = _register_bin_op(operator.xor)
+    __rxor__ = _register_rbin_op(operator.xor)
 
     # Unary operations
-    def __abs__(self):
-        formula = Formula(unary_op=operator.abs, _rhs=self)
-        return formula
+    __abs__ = _register_unary_op(operator.abs)
+
+
+def _register_ibin_op(bin_op):
+    """Helper function intended to help construct binary operations (like 
+    __radd__) for Formula and Term."""
+    def b(self, other):
+        self._value = bin_op(self._value, other)
+        self._propegate()
+        return self
+    return b
 
 
 @dataclass
@@ -201,239 +177,52 @@ class Term:
         return f"Term({self._value})"
 
     # Binary operators
-    def __add__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.add, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __radd__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.add, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __mul__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.mul, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rmul__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.mul, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __truediv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.truediv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rtruediv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.truediv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __floordiv__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.floordiv, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __xor__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.xor, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
+    __add__ = _register_bin_op(operator.add)
+    __radd__ = _register_rbin_op(operator.add)
+    __mul__ = _register_bin_op(operator.mul)
+    __rmul__ = _register_rbin_op(operator.mul)
+    __truediv__ = _register_bin_op(operator.truediv)
+    __rtruediv__ = _register_rbin_op(operator.truediv)
+    __floordiv__ = _register_bin_op(operator.floordiv)
+    __rfloordiv__ = _register_rbin_op(operator.floordiv)
+    __xor__ = _register_bin_op(operator.xor)
+    __rxor__ = _register_rbin_op(operator.xor)
 
     # Unary operators
-    def __abs__(self):
-        formula = Formula(unary_op=operator.abs, _rhs=self)
-        self._parents.append(formula)
-        return formula
-
-    def __not__(self):
-        formula = Formula(unary_op=operator.not_, _rhs=self)
-        self._parents.append(formula)
-        return formula
-
-    def __pos__(self):
-        formula = Formula(unary_op=operator.pos, _rhs=self)
-        self._parents.append(formula)
-        return formula
+    __abs__ = _register_unary_op(operator.abs)
+    __not__ = _register_unary_op(operator.not_)
+    __pos__ = _register_unary_op(operator.pos)
+    __neg__ = _register_unary_op(operator.neg)
     
-    def __neg__(self):
-        formula = Formula(unary_op=operator.neg, _rhs=self)
-        self._parents.append(formula)
-        return formula
-
     # Comparison operators. 
-    def __lt__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.lt, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rlt__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.lt, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __gt__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.gt, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rgt__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.gt, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __ge__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.ge, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rge__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.ge, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __eq__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.eq, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __req__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.eq, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-    
-    def __ne__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.eq, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
-
-    def __rne__(self, other):
-        if isinstance(other, Number):
-            other = Term(other)
-        formula = Formula(bin_op=operator.eq, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
-        return formula
+    __lt__ = _register_bin_op(operator.lt)
+    __rlt__ = _register_rbin_op(operator.lt)
+    __gt__ = _register_bin_op(operator.gt)
+    __rgt__ = _register_rbin_op(operator.gt)
+    __ge__ = _register_bin_op(operator.ge)
+    __rge__ = _register_rbin_op(operator.ge)
+    __eq__ = _register_bin_op(operator.eq)
+    __req__ = _register_rbin_op(operator.eq)
+    __ne__ = _register_bin_op(operator.ne)
+    __rne__ = _register_rbin_op(operator.ne)    
 
     # In place assignment. NOTE: Although something like a += 1 should be the 
     # same as a = a + 1, it is *not* in this library. a += 1 changes increments
     # the term. a = a + 1 makes a become the formula a + 1.
     
-    def __iadd__(self, other):
-        self._value += other
-        self._propegate()
-        return self
-
-    def __iand__(self, other):
-        self._value &= other
-        self._propegate()
-        return self
-
-    def __ifloordiv(self, other):
-        self._value //= other
-        self._propegate()
-        return self
-
-    def __ilshift__(self, other):
-        self._value <<= other
-        self._propegate()
-        return self
-
-    def __imod__(self, other):
-        self._value %= other
-        self._propegate()
-        return self
-
-    def __imul__(self, other):
-        self._value *= other
-        self._propegate()
-        return self
-
-    def __imatmul__(self, other):
-        self._value @= other
-        self._propegate()
-        return self
-
-    def __ior__(self, other):
-        self._value |= other
-        self._propegate()
-        return self
-
-    def __ipow__(self, other):
-        self._value |= other
-        self._propegate()
-        return self
-
-    def __irshift__(self, other):
-        self._value >>= other
-        self._propegate()
-        return self
-
-    def __isub__(self, other):
-        self._value -= other
-        self._propegate()
-        return self
-
-    def __itruediv__(self, other):
-        self._value /= other
-        self._propegate()
-        return self
-
-    def __ixor__(self, other):
-        self._value ^= other
-        self._propegate()
-        return self
+    __iadd__ = _register_ibin_op(operator.iadd)
+    __iand__ = _register_ibin_op(operator.iand)
+    __itruediv__ = _register_ibin_op(operator.itruediv)
+    __ifloordiv__ = _register_ibin_op(operator.ifloordiv)
+    __ilshift__ = _register_ibin_op(operator.ilshift)
+    __irshift__ = _register_ibin_op(operator.irshift)
+    __imod__ = _register_ibin_op(operator.imod)
+    __imul__ = _register_ibin_op(operator.imul)
+    __imatmul__ = _register_ibin_op(operator.imatmul)
+    __ior__ = _register_ibin_op(operator.ior)
+    __ipow__ = _register_ibin_op(operator.ipow)
+    __isub__ = _register_ibin_op(operator.isub)
+    __ixor__ = _register_ibin_op(operator.ixor)
 
 
 def bind(obj, field_name, form):
@@ -441,7 +230,6 @@ def bind(obj, field_name, form):
     Term). That is, whenever the Formula (or Term) is updated, the field for
     the object is also updated."""
     form._binds.append((obj, field_name))
-
 
 def fire_on(form):
     """Use as a decorator. If a Formula's truthiness is True, call the
