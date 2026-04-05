@@ -129,6 +129,9 @@ class Formula:
 
     # Unary operations
     __abs__ = _register_unary_op(operator.abs)
+    __not__ = _register_unary_op(operator.not_)
+    __pos__ = _register_unary_op(operator.pos)
+    __neg__ = _register_unary_op(operator.neg)
 
 
 def _register_ibin_op(bin_op):
