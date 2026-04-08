@@ -7,6 +7,9 @@ from typing import Any
 
 
 def evaluate(form: Formula | Term):
+    """Given a Term or Formula get the *current* value it contains. For terms
+    this is the same as .unwrap() method, but for for Formula, the entire
+    expression is recursively evaluated."""
     # Basic building blocks are variables and constants (i.e. Terms)
     if isinstance(form, Term):
         return form.unwrap()
