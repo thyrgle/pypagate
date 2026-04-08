@@ -43,7 +43,7 @@ An [event listener](https://aws.amazon.com/what-is/event-listener/) is a constru
 Consider we have a `player` object that has some health:
 
 ```py
->>> from pypagate import Term
+>>> from pypagate import Term, fire_on
 >>> class Player:
 ...     def __init__(self, health):
 ...         self.health = Term(health)
