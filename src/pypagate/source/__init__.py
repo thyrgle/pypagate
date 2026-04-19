@@ -5,7 +5,8 @@ from pypagate import Formula, Term
 
 class SourceMap:
     def __init__(self, terms: dict[str, Number]):
-        """Create a collection of Terms and values."""
+        """Create a collection of Terms (with starting values) where Terms can 
+        be updated with the `listen` method."""
         for name, value in terms:
             self.__dict__[name] = Term(value)
 
@@ -13,7 +14,11 @@ class SourceMap:
         self._exec_always: Callable = []
 
     def listen(self, terms: dict[str, Number]):
-        """Take in a new set of values and update them all."""
+        """Take in a new set of values and update them all.
+
+        :param terms: Dictionary of terms to take in and "listen" too. These
+            will then update the values in `self`.
+        """
         # Update the values.
         for name, value in terms:
             self[name].change(value)
@@ -28,15 +33,23 @@ class SourceMap:
 
 
 def exec_while(form, source):
-    """Every time source.listen(...) is called and the formula is true, execute
-    this function."""
+    """Use as a decorator: Every time source.listen(...) is called *and* the 
+    formula evaluates to `True`, execute this function.
+
+    :param form: The formula to check if it evaluates to `True`.
+    :param source: The source that triggers `listen(...)`.
+    """
     def decorator(func):
         source._exec_while.append((form, func))
         return func
     return decorator
 
 def exec_always(source):
-    """Every time source.listen(...) is called, evaluate this function."""
+    """Use as a decorator: Every time source.listen(...) is called, evaluate 
+    this function.
+    
+    :param source: The source that triggers `listen(...)`.
+    """
     def decorator(func):
         source._exec_always.append(func)
         return func
