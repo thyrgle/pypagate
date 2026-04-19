@@ -7,7 +7,7 @@ Unfortunately, not many APIs are made with FRP in mind. We can get around this b
 FRP in the Real World
 ---------------------
 
-Consider the following [Pygame starting example:](https://pyga.me/docs/)
+Consider the following `Pygame starting example: <https://pyga.me/docs/>`_
 
 .. code-block:: python
 
