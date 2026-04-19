@@ -7,3 +7,9 @@ pypagate documentation
    :maxdepth: 2
    :caption: Contents:
 
+Contents
+--------
+
+.. toctree::
+
+   api
