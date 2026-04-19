@@ -59,3 +59,7 @@ Game over
 ```
 
 The `fire_on` decorator waits for a formula to evaluate to `True` and then fires the corresponding function. Now, we can compose sophisticated event listeners using simple formula!
+
+## Documentation
+
+Further documentation can be found on [readthedocs.](https://pypagate.readthedocs.io/en/latest/)
