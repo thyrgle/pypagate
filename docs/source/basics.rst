@@ -18,7 +18,7 @@ You then realized you need to update the score of one student, so you change the
 Enter functional reactive programming
 -------------------------------------
 
-The core idea in this library is that the cells in Excel which contain data we manually update, and there are cells in Excel which update based on data. The cells we manually update we refer to as Terms and the cells that automatically update are referred to as Formulas.
+The core idea in this library is that the cells in Excel which contain data we manually update, and there are cells in Excel which update based on data. The cells we manually update we refer to as ``Term`` s and the cells that automatically update are referred to as ``Formula`` s.
 
 Let us look at a small example:
 
