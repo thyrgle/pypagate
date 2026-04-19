@@ -1,15 +1,7 @@
-.. pypagate documentation master file, created by
-   sphinx-quickstart on Sat Apr 18 21:18:47 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 pypagate documentation
 ======================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+``pypagate`` is a functional reactive programming library with the ability to create sophisticated event listeners. This framework was originally designed to be used for games to construct event listeners for varios events in games. Nevertheless, this library may also be used to manage and coordinate various events with algebraic event listeners.
 
 .. toctree::
    :maxdepth: 2
