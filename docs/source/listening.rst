@@ -112,3 +112,14 @@ From ``pypagate.source`` we can use ``SourceMap`` to essentially take old-world 
 Importantly, ``source`` is a ``SourceMap`` that listens for the ``pygame.QUIT`` event. When ever it becomes true ``quit_game`` is executed and ``running`` is set to ``False``.
 
 Of course, this is a bit of a toy example, but for more sophisticated events combing ``SourceMap`` objects with more sophisticated formula allow for a powerful organizational tool.
+
+-------------------------------
+Some Additional Event Listeners
+-------------------------------
+
+Even the ``SourceMap`` objects can be used to make event listeners! In particular, there are two decorators of importance.
+
+* ``@exec_always(source)``
+* ``@exec_while(form, source)``
+
+The first decorator ``@exec_always(source)`` executes every time the specified ``source`` calls ``.listen(...)``. The second decorator executes every time the specified ``source`` calls ``.listen(...)`` *and* it requires the formula ``form`` evaluates to ``True`` at the time ``.listen(...)`` is invoked.
