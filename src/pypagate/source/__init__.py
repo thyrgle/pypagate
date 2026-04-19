@@ -4,9 +4,9 @@ from pypagate import Formula, Term
 
 
 class SourceMap:
-    def __init__(self, terms: dict[str, Number]):
-        """Create a collection of Terms (with starting values) where Terms can 
+    """A collection of Terms (with starting values) where Terms can 
         be updated with the `listen` method."""
+    def __init__(self, terms: dict[str, Number]):
         for name, value in terms:
             self.__dict__[name] = Term(value)
 

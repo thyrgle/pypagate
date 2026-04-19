@@ -94,6 +94,8 @@ def _register_unary_op(unary_op):
 
 @dataclass
 class Formula:
+    """A Well-Formed-Formula that consists of Term objects (i.e. variables) and 
+    operators."""
     unary_op: Callable[[Any], Any] = None
     _lhs: Formula = None,
     bin_op: Callable[[Any, Any], Any] = None 
@@ -154,6 +156,9 @@ def _register_ibin_op(bin_op):
 
 @dataclass
 class Term:
+    """Essentially a variable that may be updated by the user. Can be included
+    in more complicated formula and whenever it is changed, the parent formula
+    are also updated to reflect this change."""
     _value: Any = None
     # Parent formulas containing the variable.
     _parents: list[Formula] = field(default_factory=list)
