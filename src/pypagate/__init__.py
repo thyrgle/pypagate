@@ -9,7 +9,12 @@ from typing import Any
 def evaluate(form: Formula | Term):
     """Given a Term or Formula get the *current* value it contains. For terms
     this is the same as .unwrap() method, but for for Formula, the entire
-    expression is recursively evaluated."""
+    expression is recursively evaluated.
+
+    :param form: A formula (or term) to extract the current value of.
+    :type form: class: Formula | Term
+    :return: The *current* value of the Formula or Term.
+    """
     # Basic building blocks are variables and constants (i.e. Terms)
     if isinstance(form, Term):
         return form.unwrap()
@@ -169,6 +174,11 @@ class Term:
                 func()
 
     def change(self, new_value):
+        """Change the wrapped value of the term. (Internally updates formulas
+        that use this term.)
+        
+        :param new_value: The value to change self.value to.
+        """
         # Nothing actually changed.
         if self._value == new_value:
             return
@@ -234,12 +244,22 @@ class Term:
 def bind(obj, field_name, form):
     """Given an object and a field name, you can "bind" it to a Formula (or 
     Term). That is, whenever the Formula (or Term) is updated, the field for
-    the object is also updated."""
+    the object is also updated.
+
+    :param obj: The object to update.
+    :param field_name: The field specific field of `obj` to change.
+    :param form: A Formula or Term that `obj.field` is updated to be equivalent
+        to.
+    """
     form._binds.append((obj, field_name))
 
 def fire_on(form):
     """Use as a decorator. If a Formula's truthiness is True, call the
-    decorated function."""
+    decorated function.
+
+    :param form: Execute the proceeding function if `form` evaluates to True at
+        some point in time.
+    """
     def fire_decorator(func):
         form._fire_on.append(func)
         return func
