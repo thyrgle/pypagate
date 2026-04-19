@@ -254,7 +254,7 @@ def bind(obj, field_name, form):
     form._binds.append((obj, field_name))
 
 def fire_on(form):
-    """Use as a decorator. If a Formula's truthiness is True, call the
+    """Use as a decorator: If a Formula's truthiness is True, call the
     decorated function.
 
     :param form: Execute the proceeding function if `form` evaluates to True at
