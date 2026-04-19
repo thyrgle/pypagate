@@ -13,4 +13,5 @@ Contents
 .. toctree::
 
    basics
+   listening
    api
