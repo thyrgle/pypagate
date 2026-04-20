@@ -117,9 +117,90 @@ Of course, this is a bit of a toy example, but for more sophisticated events com
 Some Additional Event Listeners
 -------------------------------
 
-Even the ``SourceMap`` objects can be used to make event listeners! In particular, there are two decorators of importance.
+``global`` is generally frowned upon and it would be nice if we could get rid of it. We can by utilizing some classes and *more* event listeners. In particular, we will use ``SourceMap`` to make event listeners! There are two decorators of importance.
 
 * ``@exec_always(source)``
 * ``@exec_while(form, source)``
 
 The first decorator ``@exec_always(source)`` executes every time the specified ``source`` calls ``.listen(...)``. The second decorator executes every time the specified ``source`` calls ``.listen(...)`` *and* it requires the formula ``form`` evaluates to ``True`` at the time ``.listen(...)`` is invoked.
+
+Let us make ``running`` no longer a global variable by encapsulating inside of a ``Game`` class.
+
+.. code-block:: python
+   
+   @dataclass
+   class Game:
+       running: Term = Term(False)
+       events: SourceMap = SourceMap({"dt": 0, "quit_event": False})
+
+       def run(self):
+           self.running.change(True)
+           while running:
+               events.listen({
+                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT,
+                   "dt": clock.tick(60)
+                })
+   game = Game()
+
+Now we can ``@exec_always`` to make an update method:
+
+.. code-block:: python
+
+   @exec_always(game.events)
+   def update():
+       # We don't actually need dt.
+       screen.fill("purple")
+       pygame.display.flip()
+
+And we can ``@fire_on`` like before to handle exiting the game now without the global.
+
+.. code-block:: python
+   @fire_on(game.events.quit_event)
+   def quit_game():
+       game.running.change(False)
+
+Putting everything together we get:
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   import pygame
+   from pypagate import Term
+   from pypagate.source import SourceMap
+
+   # pygame setup
+   pygame.init()
+   screen = pygame.display.set_mode((1280, 720))
+   clock = pygame.time.Clock()
+
+   @dataclass
+   class Game:
+       running: Term = Term(False)
+       events: SourceMap = SourceMap({"dt": 0, "quit_event": False})
+
+       def run(self):
+           self.running.change(True)
+           while self.running.unwrap():
+               events.listen({
+                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT,
+                   "dt": clock.tick(60)
+                })
+           pygame.quit()
+
+   game = Game()
+
+
+   @fire_on(game.events.quit_event) # == True
+   def quit_game():
+       game.running.change(False)
+
+
+   @exec_always(game.events)
+   def update():
+       # We don't actually need dt for this example.
+       screen.fill("purple")
+       pygame.display.flip()
+
+
+   if __name__ == '__main__':
+       game.run()
