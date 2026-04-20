@@ -192,6 +192,7 @@ class Term:
         self._propegate()
 
     def unwrap(self):
+        """Returns the value of the Term at the current moment."""
         return self._value
 
     def __str__(self):
