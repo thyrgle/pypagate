@@ -1,8 +1,8 @@
 API
 ===
 
-.. autosummary::
-   :toctree: generated
+.. automodapi:: pypagate
+   :no-inheritance-diagram:
 
-   pypagate
-   pypagate.source
+.. automodapi:: pypagate.source
+   :no-inheritance-diagram:

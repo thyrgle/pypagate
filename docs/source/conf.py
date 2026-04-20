@@ -16,8 +16,10 @@ release = '0.1.0'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'sphinx_automodapi.automodapi'
 ]
+numpydoc_show_class_members = False
 
 templates_path = ['_templates']
 exclude_patterns = []
