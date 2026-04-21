@@ -182,7 +182,7 @@ Putting everything together we get:
            self.running.change(True)
            while self.running.unwrap():
                events.listen({
-                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT,
+                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT),
                    "dt": clock.tick(60)
                 })
            pygame.quit()
