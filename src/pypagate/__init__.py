@@ -96,6 +96,7 @@ def _register_unary_op(unary_op):
 class Formula:
     """A Well-Formed-Formula that consists of Term objects (i.e. variables) and 
     operators."""
+    _value: Any = None
     unary_op: Callable[[Any], Any] = None
     _lhs: Formula = None,
     bin_op: Callable[[Any, Any], Any] = None 
@@ -103,12 +104,18 @@ class Formula:
     _parents: list[Formula] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
+    _on_change: list[Callable] = field(default_factory=list)
     _needs_update: bool = True
 
     def _update(self):
         if not self._needs_update:
             return self._value
-        self._value = evaluate(self)
+        new_value = evaluate(self)
+        # For the on_change decorator.
+        if new_value != self._value:
+            for func in self._on_change:
+                func()
+        self._value = new_value
         for parent in self._parents:
             parent._update()
         for obj, field_name in self._binds:
@@ -152,7 +159,18 @@ def _register_ibin_op(bin_op):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
     def b(self, other):
-        self._value = bin_op(self._value, other)
+        new_value = bin_op(self._value, other)
+        if new_value != self._value:
+            # Something did change.
+            # Execute _on_change funcs.
+            for func in self._on_change:
+                func()
+            # Since it changed, also check truthiness and execute
+            # corresponding functions.
+            if self.unwrap():
+                for func in self._fire_on:
+                    func()
+        self._value = new_value
         self._propegate()
         return self
     return b
@@ -169,7 +187,8 @@ class Term:
     # Raw Python fields that should change on update of this Term.
     _binds: list[(Any, Any)] = field(default_factory=list)
     # List of functions that are executed if this Term is True.
-    _fire_on: Callable = field(default_factory=list)
+    _fire_on: list[Callable] = field(default_factory=list)
+    _on_change: list[Callable] = field(default_factory=list)
 
     def _propegate(self):
         for parent in self._parents:
@@ -179,8 +198,8 @@ class Term:
         for obj, field_name in self._binds:
             setattr(obj, field_name, self._value)
         # or it may also be given a contract.
-        for func in self._fire_on:
-            if self.unwrap():
+        if self.unwrap():
+            for func in self._fire_on:
                 func()
 
     def change(self, new_value):
@@ -193,6 +212,14 @@ class Term:
         if self._value == new_value:
             return
         # Something did change.
+        # Execute _on_change funcs.
+        for func in self._on_change:
+            func()
+        # Execute _on_fire funcs if the Term has truthiness of True
+        if self.unwrap():
+            for func in self._fire_on:
+                func()
+        # Continue updating.
         self._value = new_value
         self._propegate()
 
@@ -292,3 +319,16 @@ def permit(form):
                 return (lambda: None)()
         return f
     return permit_decorator
+
+
+def on_change(form):
+    """Use as a decorator: If a Formula's truthiness is True, call the
+    decorated function.
+
+    :param form: Execute the proceeding function if `form` evaluates to True at
+        some point in time.
+    """
+    def fire_decorator(func):
+        form._on_change.append(func)
+        return func
+    return fire_decorator
