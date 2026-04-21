@@ -103,8 +103,11 @@ class Formula:
     _parents: list[Formula] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
+    _needs_update: bool = True
 
     def _update(self):
+        if not self._needs_update:
+            return self._value
         self._value = evaluate(self)
         for parent in self._parents:
             parent._update()
@@ -113,6 +116,7 @@ class Formula:
         for func in self._fire_on:
             if self.unwrap(): # If the value has True truthiness, call the 
                  func()       # function.
+        self._needs_update = False
 
     def unwrap(self):
         """Get the value the formula currently evaluates to."""
@@ -169,6 +173,7 @@ class Term:
 
     def _propegate(self):
         for parent in self._parents:
+            parent._needs_update = True
             parent._update()
         # Even a lonesome Term may be bound to a field.
         for obj, field_name in self._binds:
