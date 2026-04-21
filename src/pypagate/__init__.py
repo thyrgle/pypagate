@@ -275,3 +275,20 @@ def fire_on(form):
         form._fire_on.append(func)
         return func
     return fire_decorator
+
+def permit(form):
+    """Use as a decorator: If a Formula's truthiness is True, allow the
+    decorated function to be called, otherwise calling the decorated function
+    does nothing.
+
+    :param form: *Allow* execution of the proceeding function if `form`
+        evaluates to true at the time of calling the proceeding function.
+    """
+    def permit_decorator(func):
+        def f():
+            if form.unwrap():
+                return func()
+            else:
+                return (lambda: None)()
+        return f
+    return permit_decorator

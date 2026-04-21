@@ -1,4 +1,4 @@
-from pypagate import Term, fire_on
+from pypagate import Term, fire_on, permit
 
 
 def test_inc():
@@ -32,3 +32,20 @@ def test_func_listen():
     assert y == 0
     x += 1
     assert y == 3
+
+def test_permit():
+    y = True
+    x = Term(3)
+    @permit(x == 0)
+    def f():
+        nonlocal y
+        y = False
+    x -= 1
+    f()
+    assert y
+    x -= 1
+    f()
+    assert y
+    x -= 1
+    f()
+    assert not y
