@@ -322,6 +322,19 @@ def permit(form):
         return f
     return permit_decorator
 
+def either(form, f, g):
+    """Creates a new function with name ``name`` that, when called, executes
+    ``f`` when ``form`` is ``True`` and ``g`` when ``form`` is ``False``.
+
+    :param form: ``Formula`` to test.
+    :param f: Function to evaluate when ``form`` is ``True``.
+    :param g: Function to evaluate when ``form`` is ``False``
+    """
+    def func():
+        if form.unwrap():
+            return f()
+        return g()
+    return func
 
 def on_change(form):
     """Use as a decorator: If a Formula's truthiness is True, call the

@@ -1,4 +1,4 @@
-from pypagate import Term, fire_on, permit, on_change
+from pypagate import Term, fire_on, permit, on_change, either
 
 
 def test_inc():
@@ -62,4 +62,20 @@ def test_on_change():
     assert y == 1
     x += 1
     assert y == 2
+
+def test_either():
+    y = Term(0)
+    def f():
+        nonlocal y
+        y += 1
+    def g():
+        nonlocal y
+        y -= 1
+    switch = either(y == 0, f, g)
+    switch()
+    assert y == 1
+    switch()
+    assert y == 0
+    switch()
+    assert y == 1
 
