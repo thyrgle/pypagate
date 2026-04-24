@@ -54,7 +54,7 @@ def test_on_change():
     y = 0
     x = Term(0)
     @on_change(x)
-    def f():
+    def f(old, new):
         nonlocal y
         y += 1
     assert y == 0

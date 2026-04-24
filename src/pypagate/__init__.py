@@ -114,7 +114,7 @@ class Formula:
         # For the on_change decorator.
         if new_value != self._value:
             for func in self._on_change:
-                func()
+                func(self._value, new_value)
         self._value = new_value
         for parent in self._parents:
             parent._update()
@@ -164,7 +164,7 @@ def _register_ibin_op(bin_op):
             # Something did change.
             # Execute _on_change funcs.
             for func in self._on_change:
-                func()
+                func(self._value, new_value)
             # Since it changed, also check truthiness and execute
             # corresponding functions.
             if self.unwrap():
