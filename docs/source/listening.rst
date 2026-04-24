@@ -137,7 +137,7 @@ Let us make ``running`` no longer a global variable by encapsulating inside of a
            self.running.change(True)
            while running:
                events.listen({
-                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT,
+                   "quit_event": pygame.event.peek(eventtype=pygame.QUIT),
                    "dt": clock.tick(60)
                 })
    game = Game()
