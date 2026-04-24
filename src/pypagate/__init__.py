@@ -16,7 +16,7 @@ def evaluate(form: Formula | Term):
     :return: The *current* value of the Formula or Term.
     """
     # Basic building blocks are variables and constants (i.e. Terms)
-    if isinstance(form, Term):
+    if isinstance(form, Term) or (not form._needs_update):
         return form.unwrap()
     else: # Otherwise, recursively evaluate.
         # Either formula f(smaller_formula) or small_formula x small_formula2
@@ -127,7 +127,9 @@ class Formula:
 
     def unwrap(self):
         """Get the value the formula currently evaluates to."""
-        return evaluate(self)
+        if self._needs_update:
+            return evaluate(self)
+        return self._value
 
     def __str__(self):
         global __bin_str_map
