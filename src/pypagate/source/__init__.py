@@ -12,7 +12,6 @@ class SourceMap:
 
         self._exec_while: list[(Formula, Callable)] = []
         self._exec_always: list[Callable] = []
-        self._exec_either: list[(Formula, Callable, Callable)] = []
 
     def listen(self, terms: dict[str, Number]):
         """Take in a new set of values and update them all.
@@ -27,32 +26,10 @@ class SourceMap:
         for form, func in self._exec_while:
             if form.unwrap():
                 func()
-        # Perform either evaluations.
-        for form, f, g in self._exec_either:
-            if form.unwrap():
-                f()
-            else:
-                g()
         # Avoid a branch condition, execute these funcs always on every call
         # to listen.
         for func in self._exec_always:
             func()
-
-
-def exec_either(f, g, form, source):
-    """Use on a decorator for an *empty* function: Will perform either f or g
-    when ``source.listen(...)`` is executed. Whether ``f`` or ``g`` is executed
-    depends on whether ``form`` is ``True`` (``f``) or ``False`` (``g``).
-
-    :param f: Function that will execute when ``form`` is ``True``.
-    :param g: Function that will execute when ``form`` is ``False``.
-    :param form: The formula that decides which function will execute.
-    :param source: Source to listen to.
-    """
-    def decorator(func):
-        source._exec_either.append((form, f, g))
-        return func
-    return decorator
 
 def exec_while(form, source):
     """Use as a decorator: Every time source.listen(...) is called *and* the 
@@ -76,3 +53,19 @@ def exec_always(source):
         source._exec_always.append(func)
         return func
     return decorator
+
+def exec_either(form, f, g, source):
+    """Either executes ``f`` if ``form`` evaluates to ``True`` or ``g`` if 
+    ``form`` evaluates to ``False`` whenever ``source.listen(...)`` is called.
+
+    :param form: The ``Formula`` to test against.
+    :param f: The function to execute if ``form`` is ``True``.
+    :param g: The function to execute if ``form`` is ``False``.
+    :param source: Either ``f`` or ``g`` is executed whenever
+       source.listen(...) is called."""
+    @exec_always(source)
+    def func():
+        if form.unwrap():
+            return f()
+        return g()
+    return func
