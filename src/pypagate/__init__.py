@@ -293,44 +293,54 @@ def bind(obj, field_name, form):
     """
     form._binds.append((obj, field_name))
 
-def fire_on(form):
+def fire_on(form, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, call the
     decorated function.
 
     :param form: Execute the proceeding function if `form` evaluates to True at
         some point in time.
+    :param args: Additional positional arguments to pass to the decorated function.
+    :param kwargs: Additional keyword arguments to pass to the decorated function.
     """
     def fire_decorator(func):
-        form._fire_on.append(func)
+        def wrapped():
+            return func(*args, **kwargs)
+        form._fire_on.append(wrapped)
         return func
     return fire_decorator
 
-def permit(form):
+def permit(form, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, allow the
     decorated function to be called, otherwise calling the decorated function
     does nothing.
 
     :param form: *Allow* execution of the proceeding function if `form`
         evaluates to true at the time of calling the proceeding function.
+    :param args: Additional positional arguments to pass to the decorated function.
+    :param kwargs: Additional keyword arguments to pass to the decorated function.
     """
     def permit_decorator(func):
-        def f():
+        def f(*f_args, **f_kwargs):
             if form.unwrap():
-                return func()
+                return func(*args, *f_args, **{**kwargs, **f_kwargs})
             else:
                 return (lambda: None)()
         return f
     return permit_decorator
 
 
-def on_change(form):
+def on_change(form, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, call the
     decorated function.
 
     :param form: Execute the proceeding function if `form` evaluates to True at
         some point in time.
+    :param args: Additional positional arguments to pass to the decorated function.
+    :param kwargs: Additional keyword arguments to pass to the decorated function.
     """
     def fire_decorator(func):
-        form._on_change.append(func)
+        def wrapped(old, new):
+            return func(old, new, *args, **kwargs)
+        form._on_change.append(wrapped)
         return func
     return fire_decorator
