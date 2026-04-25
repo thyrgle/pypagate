@@ -117,6 +117,7 @@ class Formula:
                 func(self._value, new_value)
         self._value = new_value
         for parent in self._parents:
+            parent._needs_update = True
             parent._update()
         for obj, field_name in self._binds:
             setattr(obj, field_name, self._value)
@@ -141,6 +142,10 @@ class Formula:
     # Binary operations
     __add__ = _register_bin_op(operator.add)
     __radd__ = _register_rbin_op(operator.add)
+    __sub__ = _register_bin_op(operator.sub)
+    __rsub__ = _register_rbin_op(operator.sub)
+    __pow__ = _register_bin_op(operator.pow)
+    __rpow__ = _register_rbin_op(operator.pow)
     __mul__ = _register_bin_op(operator.mul)
     __rmul__ = _register_rbin_op(operator.mul)
     __truediv__ = _register_bin_op(operator.truediv)
@@ -156,6 +161,17 @@ class Formula:
     __pos__ = _register_unary_op(operator.pos)
     __neg__ = _register_unary_op(operator.neg)
 
+    # Comparison operators. 
+    __lt__ = _register_bin_op(operator.lt)
+    __rlt__ = _register_rbin_op(operator.lt)
+    __gt__ = _register_bin_op(operator.gt)
+    __rgt__ = _register_rbin_op(operator.gt)
+    __ge__ = _register_bin_op(operator.ge)
+    __rge__ = _register_rbin_op(operator.ge)
+    __eq__ = _register_bin_op(operator.eq)
+    __req__ = _register_rbin_op(operator.eq)
+    __ne__ = _register_bin_op(operator.ne)
+    __rne__ = _register_rbin_op(operator.ne)
 
 def _register_ibin_op(bin_op):
     """Helper function intended to help construct binary operations (like 
@@ -235,6 +251,10 @@ class Term:
     # Binary operators
     __add__ = _register_bin_op(operator.add)
     __radd__ = _register_rbin_op(operator.add)
+    __sub__ = _register_bin_op(operator.sub)
+    __rsub__ = _register_rbin_op(operator.sub)
+    __pow__ = _register_bin_op(operator.pow)
+    __rpow__ = _register_rbin_op(operator.pow)
     __mul__ = _register_bin_op(operator.mul)
     __rmul__ = _register_rbin_op(operator.mul)
     __truediv__ = _register_bin_op(operator.truediv)
@@ -357,3 +377,33 @@ def on_change(form, *args, **kwargs):
         form._on_change.append(wrapped)
         return func
     return fire_decorator
+
+class Universe:
+    """A queryable collection of reactive entities. Accessing any attribute
+    returns a persistent Term that can be used in formulas with the library's
+    evaluation engine.
+    """
+
+    def __getattr__(self, name: str):
+        t = Term(0)
+        object.__setattr__(self, name, t)
+        return t
+
+    def __setattr__(self, name: str, value: Any):
+        try:
+            # Check if this attribute is already tracked in the reactive graph
+            attr = object.__getattribute__(self, name)
+        except AttributeError:
+            attr = None
+
+        if isinstance(attr, Term):
+            # If the Term exists, update its internal value to trigger _propagate()
+            if isinstance(value, Term):
+                attr.change(value.unwrap())
+            else:
+                attr.change(value)
+        else:
+            # First-time assignment: wrap primitives in a Term
+            if not isinstance(value, (Term, Formula)):
+                value = Term(value)
+            object.__setattr__(self, name, value)
