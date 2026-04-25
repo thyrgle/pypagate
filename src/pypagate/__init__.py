@@ -132,12 +132,15 @@ class Formula:
         return self._value
 
     def __str__(self):
-        global __bin_str_map
-        global __unary_str_map
+        # Bypass Python's name mangling by directly accessing the runtime globals
         if not self.bin_op:
-            return __unary_str_map[self.unary_op] + " (" + str(self._rhs) + ")"
-        return f"({str(self._lhs)}) {__bin_str_map[self.bin_op]} ({str(self._rhs)})"
-
+            unary_map = globals().get("__unary_str_map", {})
+            op_name = unary_map.get(self.unary_op, getattr(self.unary_op, "__name__", "op"))
+            return op_name + " (" + str(self._rhs) + ")"
+            
+        bin_map = globals().get("__bin_str_map", {})
+        return f"({str(self._lhs)}) {bin_map.get(self.bin_op, 'op')} ({str(self._rhs)})"    
+    
     # Binary operations
     __add__ = _register_bin_op(operator.add)
     __radd__ = _register_rbin_op(operator.add)
