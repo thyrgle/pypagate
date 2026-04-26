@@ -1,4 +1,5 @@
-from pypagate import Term, fire_on, permit, on_change, either
+from pypagate import Term, Universe, Variable, \
+                     fire_on, permit, on_change, either, verify_any, verify_all
 
 
 def test_inc():
@@ -79,3 +80,8 @@ def test_either():
     switch()
     assert y == 1
 
+def test_universe():
+    U = Universe([Term(1), Term(2), Term(3)])
+    x = Variable(U)
+    assert verify_any(x > 2)
+    assert not verify_all(x > 2)

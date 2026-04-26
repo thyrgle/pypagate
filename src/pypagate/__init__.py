@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from itertools import product
 from numbers import Number
 import operator
 from typing import Any
@@ -210,6 +211,8 @@ class Term:
     # List of functions that are executed if this Term is True.
     _fire_on: list[Callable] = field(default_factory=list)
     _on_change: list[Callable] = field(default_factory=list)
+    _var_count: int = 0 # Terms do not contribute variable count, but variables
+                        # do!
 
     def _propegate(self):
         for parent in self._parents:
@@ -381,32 +384,226 @@ def on_change(form, *args, **kwargs):
         return func
     return fire_decorator
 
-class Universe:
-    """A queryable collection of reactive entities. Accessing any attribute
-    returns a persistent Term that can be used in formulas with the library's
-    evaluation engine.
-    """
 
-    def __getattr__(self, name: str):
-        t = Term(0)
-        object.__setattr__(self, name, t)
-        return t
+def verify_any(law: Law):
+    for instance in law._specializations:
+        if instance.unwrap():
+            return True
+    return False
 
-    def __setattr__(self, name: str, value: Any):
-        try:
-            # Check if this attribute is already tracked in the reactive graph
-            attr = object.__getattribute__(self, name)
-        except AttributeError:
-            attr = None
+def verify_all(law: Law):
+    for instance in law._specializations:
+        print(instance)
+        if not instance.unwrap():
+            return False
+        return True
 
-        if isinstance(attr, Term):
-            # If the Term exists, update its internal value to trigger _propagate()
-            if isinstance(value, Term):
-                attr.change(value.unwrap())
-            else:
-                attr.change(value)
+
+def _specialize_helper(law: Law):
+    if isinstance(law, Variable):
+        return law._temp_value
+    elif isinstance(law, Term):
+        return law
+    else:
+        if law.bin_op is None:
+            return Formula(unary_op=law.unary_op,
+                           _rhs=_specialize_helper(law._rhs))
         else:
-            # First-time assignment: wrap primitives in a Term
-            if not isinstance(value, (Term, Formula)):
-                value = Term(value)
-            object.__setattr__(self, name, value)
+            return Formula(
+                    bin_op=law.bin_op,
+                    _lhs=_specialize_helper(law._lhs), 
+                    _rhs=_specialize_helper(law._rhs)
+                   )
+
+
+def _specialize(law: Law, subs: list[Term]):
+    """Generates a Formula for the specified Terms."""
+    if isinstance(law, Variable):
+        return subs[0]
+    for i, var in enumerate(law.variables):
+        var._temp_value = subs[i]
+    return _specialize_helper(law)
+
+@dataclass
+class Universe:
+    entities: Term[Any] = field(default_factory=list)
+
+# Similar to here https://stackoverflow.com/a/7844038/667648
+def _law_register_bin_op(bin_op):
+    """Helper function intended to help construct binary operations (like 
+    __add__) for Formula and Term."""
+    def b(self, other):
+        if isinstance(self, Variable):
+            self.variables = [self]
+        if isinstance(other, Number):
+            other = Term(other)
+            vc = self._var_count
+            law = Law(self.universe,
+                      self.variables,
+                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+        elif isinstance(other, Variable):
+            other = Term(other)
+            vc = self._var_count
+            law = Law(self.universe,
+                      self.variables + [other],
+                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+        else:
+            other = Term(other)
+            vc = self._var_count + other._var_count
+            law = Law(self.universe,
+                      self.variables + other.variables,
+                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+        self._parents.append(law)
+        other._parents.append(law)
+        return law
+    return b
+
+def _law_register_rbin_op(bin_op):
+    """Helper function intended to help construct binary operations (like 
+    __radd__) for Formula and Term."""
+    def b(self, other):
+        if isinstance(self, Variable):
+            self.variables = []
+        if isinstance(other, Number) or isinstance(other, Term):
+            other = Term(other)
+            vc = self._var_count
+            # Order of params are switched for the r version!
+            law = Law(self.universe,
+                      self.variables,
+                      bin_op=bin_op, _lhs=other, _rhs=self, _var_count=vc)
+        elif isinstance(other, Variable):
+            vc = self._var_count + 1
+            # Order of params are switched for the r version!
+            law = Law(self.universe,
+                      self.variables + [other],
+                      bin_op=bin_op, _lhs=other, _rhs=self, _var_count=vc)
+        else:
+            vc = self._var_count + other._var_count
+            law = Law(self.universe,
+                      self.variables + other.variables,
+                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+        self._parents.append(law)
+        other._parents.append(law)
+        return law
+    return b
+
+def _law_register_unary_op(unary_op):
+    """Helper function inteded to help construct unary operations (like
+    __abs__) for Formula and Term."""
+    def u(self):
+        if isinstance(self, Variable):
+            self.variables = []
+        if isinstance(self, Variable):
+            return Law(self.universe,
+                       [self],
+                       unary_op=unary_op, _rhs=self, _var_count=1)
+        vc = self._var_count
+        law = Law(self.universe,
+                  self.variables,
+                  unary_op=unary_op, _rhs=self, _var_count=vc)
+        self._parents.append(law)
+        return law
+    return u 
+
+
+@dataclass
+class Variable:
+    universe: Universe
+    _var_count: int = 1
+    _temp_value: Any = None
+    _parents: list[Law] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.variables = self
+
+    # Binary operations
+    __add__ = _law_register_bin_op(operator.add)
+    __radd__ = _law_register_rbin_op(operator.add)
+    __sub__ = _law_register_bin_op(operator.sub)
+    __rsub__ = _law_register_rbin_op(operator.sub)
+    __pow__ = _law_register_bin_op(operator.pow)
+    __rpow__ = _law_register_rbin_op(operator.pow)
+    __mul__ = _law_register_bin_op(operator.mul)
+    __rmul__ = _law_register_rbin_op(operator.mul)
+    __truediv__ = _law_register_bin_op(operator.truediv)
+    __rtruediv__ = _law_register_rbin_op(operator.truediv)
+    __floordiv__ = _law_register_bin_op(operator.floordiv)
+    __rfloordiv__ = _law_register_rbin_op(operator.floordiv)
+    __xor__ = _law_register_bin_op(operator.xor)
+    __rxor__ = _law_register_rbin_op(operator.xor)
+
+    # Unary operations
+    __abs__ = _law_register_unary_op(operator.abs)
+    __not__ = _law_register_unary_op(operator.not_)
+    __pos__ = _law_register_unary_op(operator.pos)
+    __neg__ = _law_register_unary_op(operator.neg)
+
+    # Comparison operators. 
+    __lt__ = _law_register_bin_op(operator.lt)
+    __rlt__ = _law_register_rbin_op(operator.lt)
+    __gt__ = _law_register_bin_op(operator.gt)
+    __rgt__ = _law_register_rbin_op(operator.gt)
+    __ge__ = _law_register_bin_op(operator.ge)
+    __rge__ = _law_register_rbin_op(operator.ge)
+    __eq__ = _law_register_bin_op(operator.eq)
+    __req__ = _law_register_rbin_op(operator.eq)
+    __ne__ = _law_register_bin_op(operator.ne)
+    __rne__ = _law_register_rbin_op(operator.ne)
+
+
+
+@dataclass
+class Law:
+    universe: Universe
+    variables: list[Variable] = field(default_factory=list)
+    unary_op: Callable[[Any], Any] = None
+    _lhs: Formula = None,
+    bin_op: Callable[[Any, Any], Any] = None 
+    _rhs: Formula = None
+    _parents: list[Law] = field(default_factory=list)
+    _binds: Any = field(default_factory=list)
+    _fire_on: list[Callable] = field(default_factory=list)
+    _on_change: list[Callable] = field(default_factory=list)
+    _needs_update: bool = True
+    _var_count: int = 0
+    _specializations: list[Formula] = field(default_factory=list)
+    
+    def __post_init__(self):
+        substitutions = product(self.universe.entities, repeat=self._var_count)
+        # The law is the union of the specialization.
+        for substitution in substitutions:
+            self._specializations.append(_specialize(self, substitution))
+
+    # Binary operations
+    __add__ = _law_register_bin_op(operator.add)
+    __radd__ = _law_register_rbin_op(operator.add)
+    __sub__ = _law_register_bin_op(operator.sub)
+    __rsub__ = _law_register_rbin_op(operator.sub)
+    __pow__ = _law_register_bin_op(operator.pow)
+    __rpow__ = _law_register_rbin_op(operator.pow)
+    __mul__ = _law_register_bin_op(operator.mul)
+    __rmul__ = _law_register_rbin_op(operator.mul)
+    __truediv__ = _law_register_bin_op(operator.truediv)
+    __rtruediv__ = _law_register_rbin_op(operator.truediv)
+    __floordiv__ = _law_register_bin_op(operator.floordiv)
+    __rfloordiv__ = _law_register_rbin_op(operator.floordiv)
+    __xor__ = _law_register_bin_op(operator.xor)
+    __rxor__ = _law_register_rbin_op(operator.xor)
+
+    # Unary operations
+    __abs__ = _law_register_unary_op(operator.abs)
+    __not__ = _law_register_unary_op(operator.not_)
+    __pos__ = _law_register_unary_op(operator.pos)
+    __neg__ = _law_register_unary_op(operator.neg)
+
+    # Comparison operators. 
+    __lt__ = _law_register_bin_op(operator.lt)
+    __rlt__ = _law_register_rbin_op(operator.lt)
+    __gt__ = _law_register_bin_op(operator.gt)
+    __rgt__ = _law_register_rbin_op(operator.gt)
+    __ge__ = _law_register_bin_op(operator.ge)
+    __rge__ = _law_register_rbin_op(operator.ge)
+    __eq__ = _law_register_bin_op(operator.eq)
+    __req__ = _law_register_rbin_op(operator.eq)
+    __ne__ = _law_register_bin_op(operator.ne)
+    __rne__ = _law_register_rbin_op(operator.ne)
