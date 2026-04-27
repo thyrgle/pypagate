@@ -109,8 +109,6 @@ class Formula:
     _needs_update: bool = True
 
     def _update(self):
-        if not self._needs_update:
-            return self._value
         new_value = evaluate(self)
         # For the on_change decorator.
         if new_value != self._value:
@@ -393,27 +391,40 @@ def verify_any(law: Law):
 
 def verify_all(law: Law):
     for instance in law._specializations:
-        print(instance)
         if not instance.unwrap():
             return False
         return True
 
 
-def _specialize_helper(law: Law):
+def _specialize_helper(law: Law, parent=None):
     if isinstance(law, Variable):
+        if parent is not None:
+            law._temp_value._parents.append(parent)
         return law._temp_value
     elif isinstance(law, Term):
         return law
     else:
         if law.bin_op is None:
-            return Formula(unary_op=law.unary_op,
-                           _rhs=_specialize_helper(law._rhs))
+            form = Formula(unary_op=law.unary_op,
+                           _rhs=None)
+            rhs = _specialize_helper(law._rhs, parent=form)
+            form._rhs = rhs
+            if parent is not None:
+                form._parents.extend(parent)
+            return form     
         else:
-            return Formula(
+            form = Formula(
                     bin_op=law.bin_op,
-                    _lhs=_specialize_helper(law._lhs), 
-                    _rhs=_specialize_helper(law._rhs)
+                    _lhs=None,
+                    _rhs=None
                    )
+            lhs = _specialize_helper(law._lhs, parent=form)
+            rhs = _specialize_helper(law._rhs, parent=form)
+            form._lhs = lhs
+            form._rhs = rhs
+            if parent is not None:
+                form._parents.extend(parent)
+            return form
 
 
 def _specialize(law: Law, subs: list[Term]):
@@ -607,3 +618,23 @@ class Law:
     __req__ = _law_register_rbin_op(operator.eq)
     __ne__ = _law_register_bin_op(operator.ne)
     __rne__ = _law_register_rbin_op(operator.ne)
+
+
+def fire_on_each(law, *args, **kwarg):
+    """Use as a decorator: If some specialization of a Law's truthiness is 
+    True, call the decorated function.
+
+    :param form: Execute the proceeding function if `form` evaluates to True 
+        at some point in time.
+    :param args: Additional positional arguments to pass to the decorated 
+        function.
+    :param kwargs: Additional keyword arguments to pass to the decorated 
+        function.
+    """
+    def fire_decorator(func):
+        def wrapped():
+            return func(*args, **kwarg)
+        for form in law._specializations:
+            form._fire_on.append(wrapped)
+        return func
+    return fire_decorator

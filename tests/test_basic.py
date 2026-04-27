@@ -1,5 +1,6 @@
 from pypagate import Term, Universe, Variable, \
-                     fire_on, permit, on_change, either, verify_any, verify_all
+                     fire_on, fire_on_each, \
+                     permit, on_change, either, verify_any, verify_all
 
 
 def test_inc():
@@ -85,3 +86,20 @@ def test_universe():
     x = Variable(U)
     assert verify_any(x > 2)
     assert not verify_all(x > 2)
+
+def test_fire_on_each():
+    y = 0
+    v1, v2 = Term(0), Term(0)
+    U = Universe([v1, v2])
+    x = Variable(U)
+    law = (x == 2)
+    @fire_on_each(law)
+    def f():
+        print("HERE?")
+        nonlocal y
+        y += 1
+    assert y == 0
+    v1.change(2)
+    assert y == 1
+    v2.change(2)
+    assert y == 2
