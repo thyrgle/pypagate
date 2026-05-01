@@ -164,16 +164,18 @@ class Formula:
     __neg__ = _register_unary_op(operator.neg)
 
     # Comparison operators. 
-    __lt__ = _register_bin_op(operator.lt)
-    __rlt__ = _register_rbin_op(operator.lt)
-    __gt__ = _register_bin_op(operator.gt)
-    __rgt__ = _register_rbin_op(operator.gt)
-    __ge__ = _register_bin_op(operator.ge)
-    __rge__ = _register_rbin_op(operator.ge)
-    __eq__ = _register_bin_op(operator.eq)
-    __req__ = _register_rbin_op(operator.eq)
-    __ne__ = _register_bin_op(operator.ne)
-    __rne__ = _register_rbin_op(operator.ne)
+    # NOTE: We ignore bad-override error from Pyrefly. This is because normally
+    # these operators return booleans, but we do *not* want to do that.
+    __lt__ = _register_bin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __rlt__ = _register_rbin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __gt__ = _register_bin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __rgt__ = _register_rbin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __ge__ = _register_bin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __rge__ = _register_rbin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __eq__ = _register_bin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __req__ = _register_rbin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __ne__ = _register_bin_op(operator.ne) # pyrefly: ignore[bad-override]
+    __rne__ = _register_rbin_op(operator.ne) # pyrefly: ignore[bad-override]
 
 def _register_ibin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
@@ -274,17 +276,19 @@ class Term:
     __pos__ = _register_unary_op(operator.pos)
     __neg__ = _register_unary_op(operator.neg)
     
-    # Comparison operators. 
-    __lt__ = _register_bin_op(operator.lt)
-    __rlt__ = _register_rbin_op(operator.lt)
-    __gt__ = _register_bin_op(operator.gt)
-    __rgt__ = _register_rbin_op(operator.gt)
-    __ge__ = _register_bin_op(operator.ge)
-    __rge__ = _register_rbin_op(operator.ge)
-    __eq__ = _register_bin_op(operator.eq)
-    __req__ = _register_rbin_op(operator.eq)
-    __ne__ = _register_bin_op(operator.ne)
-    __rne__ = _register_rbin_op(operator.ne)    
+    # Comparison operators.
+    # NOTE: We override bad-override because these operators *traditionally*
+    # return a boolean but we want them to *not* do that.
+    __lt__ = _register_bin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __rlt__ = _register_rbin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __gt__ = _register_bin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __rgt__ = _register_rbin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __ge__ = _register_bin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __rge__ = _register_rbin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __eq__ = _register_bin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __req__ = _register_rbin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __ne__ = _register_bin_op(operator.ne) # pyrefly: ignore[bad-override]
+    __rne__ = _register_rbin_op(operator.ne) #pyrefly: ignore[bad-override]
 
     # In place assignment. NOTE: Although something like a += 1 should be the 
     # same as a = a + 1, it is *not* in this library. a += 1 changes increments
@@ -463,7 +467,10 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
                       self.variables + other.variables,
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
         self._parents.append(law)
-        other._parents.append(law)
+        other._parents.append(law) # pyrefly: ignore[missing-attribute]
+                                   # other is gaurenteed to have _parents. If 
+                                   # it were a Number, it gets reassigned to a 
+                                   # Term.
         return law
     return b
 
@@ -547,17 +554,19 @@ class Variable:
     __pos__ = _law_register_unary_op(operator.pos)
     __neg__ = _law_register_unary_op(operator.neg)
 
-    # Comparison operators. 
-    __lt__ = _law_register_bin_op(operator.lt)
-    __rlt__ = _law_register_rbin_op(operator.lt)
-    __gt__ = _law_register_bin_op(operator.gt)
-    __rgt__ = _law_register_rbin_op(operator.gt)
-    __ge__ = _law_register_bin_op(operator.ge)
-    __rge__ = _law_register_rbin_op(operator.ge)
-    __eq__ = _law_register_bin_op(operator.eq)
-    __req__ = _law_register_rbin_op(operator.eq)
-    __ne__ = _law_register_bin_op(operator.ne)
-    __rne__ = _law_register_rbin_op(operator.ne)
+    # Comparison operators.
+    # NOTE: We ignore bad-override because these operators *traditionally*
+    # return a boolean but we do not want that in our case.
+    __lt__ = _law_register_bin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __rlt__ = _law_register_rbin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __gt__ = _law_register_bin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __rgt__ = _law_register_rbin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __ge__ = _law_register_bin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __rge__ = _law_register_rbin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __eq__ = _law_register_bin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __req__ = _law_register_rbin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __ne__ = _law_register_bin_op(operator.ne) # pyrefly: ignore[bad-override]
+    __rne__ = _law_register_rbin_op(operator.ne) # pyrefly: ignore[bad-override]
 
 
 
@@ -606,16 +615,16 @@ class Law:
     __neg__ = _law_register_unary_op(operator.neg)
 
     # Comparison operators. 
-    __lt__ = _law_register_bin_op(operator.lt)
-    __rlt__ = _law_register_rbin_op(operator.lt)
-    __gt__ = _law_register_bin_op(operator.gt)
-    __rgt__ = _law_register_rbin_op(operator.gt)
-    __ge__ = _law_register_bin_op(operator.ge)
-    __rge__ = _law_register_rbin_op(operator.ge)
-    __eq__ = _law_register_bin_op(operator.eq)
-    __req__ = _law_register_rbin_op(operator.eq)
-    __ne__ = _law_register_bin_op(operator.ne)
-    __rne__ = _law_register_rbin_op(operator.ne)
+    __lt__ = _law_register_bin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __rlt__ = _law_register_rbin_op(operator.lt) # pyrefly: ignore[bad-override]
+    __gt__ = _law_register_bin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __rgt__ = _law_register_rbin_op(operator.gt) # pyrefly: ignore[bad-override]
+    __ge__ = _law_register_bin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __rge__ = _law_register_rbin_op(operator.ge) # pyrefly: ignore[bad-override]
+    __eq__ = _law_register_bin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __req__ = _law_register_rbin_op(operator.eq) # pyrefly: ignore[bad-override]
+    __ne__ = _law_register_bin_op(operator.ne) # pyrefly: ignore[bad-override]
+    __rne__ = _law_register_rbin_op(operator.ne) # pyrefly: ignore[bad-override]
 
 
 def fire_on_each(law: Law, *args, **kwarg):
