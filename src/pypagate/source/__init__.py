@@ -13,6 +13,9 @@ class SourceMap:
         self._exec_while: list[tuple[Formula, Callable]] = []
         self._exec_always: list[Callable] = []
 
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
     def listen(self, terms: dict[str, Number]):
         """Take in a new set of values and update them all.
 
