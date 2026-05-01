@@ -64,7 +64,8 @@ def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
     __add__) for Formula and Term."""
     def b(self: Formula | Term, other: Formula | Term | Number):
         if isinstance(other, Number):
-            other = Term(other)
+            other = Term(other) # pyrefly: ignore[bad-assignment]
+                                # Need to cast for ease of use!
         formula = Formula(bin_op=bin_op, _lhs=self, _rhs=other)
         self._parents.append(formula)
         other._parents.append(formula)
@@ -76,7 +77,8 @@ def _register_rbin_op(bin_op: Callable[[Any, Any], Any]):
     __radd__) for Formula and Term."""
     def b(self: Formula | Term, other: Formula | Term | Number):
         if isinstance(other, Number):
-            other = Term(other)
+            other = Term(other) # pyrefly: ignore[bad-assignment]
+                                # Need to cast for ease of use!
         # Order of params are switched for the r version!
         formula = Formula(bin_op=bin_op, _lhs=other, _rhs=self)
         self._parents.append(formula)
@@ -102,7 +104,7 @@ class Formula:
     _lhs: Formula | Term | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
     _rhs: Formula | Term | None = None
-    _parents: list[Formula] = field(default_factory=list)
+    _parents: list[Formula | Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
     _on_change: list[Callable] = field(default_factory=list)
@@ -124,6 +126,18 @@ class Formula:
             if self.unwrap(): # If the value has True truthiness, call the 
                  func()       # function.
         self._needs_update = False
+
+    def _propegate(self):
+        for parent in self._parents:
+            parent._needs_update = True
+            parent._update()
+        # Even a lonesome Term may be bound to a field.
+        for obj, field_name in self._binds:
+            setattr(obj, field_name, self._value)
+        # or it may also be given a contract.
+        if self.unwrap():
+            for func in self._fire_on:
+                func()
 
     def unwrap(self):
         """Get the value the formula currently evaluates to."""
@@ -205,9 +219,9 @@ class Term:
     are also updated to reflect this change."""
     _value: Any = None
     # Parent formulas containing the variable.
-    _parents: list[Formula] = field(default_factory=list)
+    _parents: list[Formula | Law] = field(default_factory=list)
     # Raw Python fields that should change on update of this Term.
-    _binds: list[(Any, Any)] = field(default_factory=list)
+    _binds: list[tuple[Any, Any]] = field(default_factory=list)
     # List of functions that are executed if this Term is True.
     _fire_on: list[Callable] = field(default_factory=list)
     _on_change: list[Callable] = field(default_factory=list)
@@ -400,7 +414,9 @@ def verify_all(law: Law):
         return True
 
 
-def _specialize_helper(law: Law | Variable, parent=None):
+def _specialize_helper(law: Law | Variable | Term | None, parent=None):
+    if law is None:
+        return None
     if isinstance(law, Variable):
         if parent is not None:
             law._temp_value._parents.append(parent)
@@ -441,7 +457,7 @@ def _specialize(law: Law | Variable, subs: list[Term]):
 
 @dataclass
 class Universe:
-    entities: Term[Any] = field(default_factory=list)
+    entities: list[Term] = field(default_factory=list)
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
@@ -449,19 +465,18 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     __add__) for Formula and Term."""
     def b(self: Law | Variable, other: Law | Variable | Number):
         if isinstance(other, Number):
-            other = Term(other)
+            other = Term(other) # pyrefly: ignore[bad-assignment]
+                                # Need to cast for ease of use!
             vc = self._var_count
             law = Law(self.universe,
                       self.variables,
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
         elif isinstance(other, Variable):
-            other = Term(other)
             vc = self._var_count
             law = Law(self.universe,
                       self.variables + [other],
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
         else:
-            other = Term(other)
             vc = self._var_count + other._var_count
             law = Law(self.universe,
                       self.variables + other.variables,
@@ -478,10 +493,9 @@ def _law_register_rbin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
     def b(self: Law, other):
-        if isinstance(self, Variable):
-            self.variables = []
         if isinstance(other, Number) or isinstance(other, Term):
             other = Term(other)
+            assert isinstance(other, Term)
             vc = self._var_count
             # Order of params are switched for the r version!
             law = Law(self.universe,
@@ -499,7 +513,10 @@ def _law_register_rbin_op(bin_op: Callable[[Any, Any], Any]):
                       self.variables + other.variables,
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
         self._parents.append(law)
-        other._parents.append(law)
+        if isinstance(other, Term):
+            other._parents.append(law)
+        elif isinstance(other, Formula):
+            other._parents.append(law)
         return law
     return b
 
@@ -507,8 +524,6 @@ def _law_register_unary_op(unary_op):
     """Helper function inteded to help construct unary operations (like
     __abs__) for Formula and Term."""
     def u(self):
-        if isinstance(self, Variable):
-            self.variables = []
         if isinstance(self, Variable):
             return Law(self.universe,
                        [self],
@@ -575,9 +590,9 @@ class Law:
     universe: Universe
     variables: list[Variable] = field(default_factory=list)
     unary_op: Callable[[Any], Any] | None = None
-    _lhs: Law | Variable | None = None
+    _lhs: Law | Variable | Term | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    _rhs: Law | Variable | None = None
+    _rhs: Law | Variable | Term | None = None
     _parents: list[Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
