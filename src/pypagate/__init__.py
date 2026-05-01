@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from itertools import product
 from numbers import Number
 import operator
-from typing import Any
+from typing import Any, Literal
 
 
 def evaluate(form: Formula | Term):
@@ -22,8 +22,12 @@ def evaluate(form: Formula | Term):
     else: # Otherwise, recursively evaluate.
         # Either formula f(smaller_formula) or small_formula x small_formula2
         if form.bin_op is None:
+            assert form._rhs is not None
+            assert form.unary_op is not None
             return form.unary_op(evaluate(form._rhs))
         else:
+            assert form._lhs is not None
+            assert form._rhs is not None
             return form.bin_op(
                     evaluate(form._lhs), 
                     evaluate(form._rhs)
@@ -62,7 +66,7 @@ __unary_str_map = {
 def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __add__) for Formula and Term."""
-    def b(self: Formula | Term, other: Formula | Term | Number):
+    def b(self: Formula | Term, other: Formula | Term | Number | Literal):
         if isinstance(other, Number):
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
@@ -75,7 +79,7 @@ def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
 def _register_rbin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
-    def b(self: Formula | Term, other: Formula | Term | Number):
+    def b(self: Formula | Term, other: Formula | Term | Number | Literal):
         if isinstance(other, Number):
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
@@ -194,7 +198,7 @@ class Formula:
 def _register_ibin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
-    def b(self: Formula | Term, other: Number):
+    def b(self: Formula | Term, other: Number | Literal):
         new_value = bin_op(self._value, other)
         if new_value != self._value:
             # Something did change.
@@ -425,8 +429,10 @@ def _specialize_helper(law: Law | Variable | Term | None, parent=None):
         return law
     else:
         if law.bin_op is None:
+            assert law.unary_op is not None
             form = Formula(unary_op=law.unary_op,
                            _rhs=None)
+            assert law._rhs is not None
             rhs = _specialize_helper(law._rhs, parent=form)
             form._rhs = rhs
             if parent is not None:
@@ -438,7 +444,9 @@ def _specialize_helper(law: Law | Variable | Term | None, parent=None):
                     _lhs=None,
                     _rhs=None
                    )
+            assert law._lhs is not None
             lhs = _specialize_helper(law._lhs, parent=form)
+            assert law._rhs is not None
             rhs = _specialize_helper(law._rhs, parent=form)
             form._lhs = lhs
             form._rhs = rhs
@@ -463,7 +471,7 @@ class Universe:
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __add__) for Formula and Term."""
-    def b(self: Law | Variable, other: Law | Variable | Number):
+    def b(self: Law | Variable, other: Law | Variable | Number | Literal):
         if isinstance(other, Number):
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
@@ -605,6 +613,10 @@ class Law:
         # The law is the union of the specialization.
         for substitution in substitutions:
             self._specializations.append(_specialize(self, substitution))
+
+    def _update(self):
+        for formula in self._specializations:
+            formula._update()
 
     # Binary operations
     __add__ = _law_register_bin_op(operator.add)
