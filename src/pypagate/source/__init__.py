@@ -10,7 +10,7 @@ class SourceMap:
         for name, value in terms:
             self.__dict__[name] = Term(value)
 
-        self._exec_while: list[(Formula, Callable)] = []
+        self._exec_while: list[tuple[Formula, Callable]] = []
         self._exec_always: list[Callable] = []
 
     def listen(self, terms: dict[str, Number]):

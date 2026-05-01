@@ -59,10 +59,10 @@ __unary_str_map = {
 
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
-def _register_bin_op(bin_op):
+def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __add__) for Formula and Term."""
-    def b(self, other):
+    def b(self: Formula | Term, other: Formula | Term | Number):
         if isinstance(other, Number):
             other = Term(other)
         formula = Formula(bin_op=bin_op, _lhs=self, _rhs=other)
@@ -71,10 +71,10 @@ def _register_bin_op(bin_op):
         return formula
     return b
 
-def _register_rbin_op(bin_op):
+def _register_rbin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
-    def b(self, other):
+    def b(self: Formula | Term, other: Formula | Term | Number):
         if isinstance(other, Number):
             other = Term(other)
         # Order of params are switched for the r version!
@@ -84,10 +84,10 @@ def _register_rbin_op(bin_op):
         return formula
     return b
 
-def _register_unary_op(unary_op):
+def _register_unary_op(unary_op: Callable[[Any], Any]):
     """Helper function inteded to help construct unary operations (like
     __abs__) for Formula and Term."""
-    def u(self):
+    def u(self: Formula | Term):
         formula = Formula(unary_op=unary_op, _rhs=self)
         self._parents.append(formula)
         return formula
@@ -98,10 +98,10 @@ class Formula:
     """A Well-Formed-Formula that consists of Term objects (i.e. variables) and 
     operators."""
     _value: Any = None
-    unary_op: Callable[[Any], Any] = None
-    _lhs: Formula = None,
-    bin_op: Callable[[Any, Any], Any] = None 
-    _rhs: Formula = None
+    unary_op: Callable[[Any], Any] | None = None
+    _lhs: Formula | None = None
+    bin_op: Callable[[Any, Any], Any] | None = None 
+    _rhs: Formula | None = None
     _parents: list[Formula] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
@@ -175,10 +175,10 @@ class Formula:
     __ne__ = _register_bin_op(operator.ne)
     __rne__ = _register_rbin_op(operator.ne)
 
-def _register_ibin_op(bin_op):
+def _register_ibin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
-    def b(self, other):
+    def b(self: Formula | Term, other: Number):
         new_value = bin_op(self._value, other)
         if new_value != self._value:
             # Something did change.
@@ -305,7 +305,7 @@ class Term:
     __ixor__ = _register_ibin_op(operator.ixor)
 
 
-def bind(obj, field_name, form):
+def bind(obj: Any, field_name: Any, form: Formula | Term):
     """Given an object and a field name, you can "bind" it to a Formula (or 
     Term). That is, whenever the Formula (or Term) is updated, the field for
     the object is also updated.
@@ -317,7 +317,7 @@ def bind(obj, field_name, form):
     """
     form._binds.append((obj, field_name))
 
-def fire_on(form, *args, **kwargs):
+def fire_on(form: Formula | Term, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, call the
     decorated function.
 
@@ -333,7 +333,7 @@ def fire_on(form, *args, **kwargs):
         return func
     return fire_decorator
 
-def permit(form, *args, **kwargs):
+def permit(form: Formula | Term, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, allow the
     decorated function to be called, otherwise calling the decorated function
     does nothing.
@@ -352,7 +352,7 @@ def permit(form, *args, **kwargs):
         return f
     return permit_decorator
 
-def either(form, f, g):
+def either(form: Formula | Term, f: Callable[[]], g: Callable[[]]):
     """Creates a new function with name ``name`` that, when called, executes
     ``f`` when ``form`` is ``True`` and ``g`` when ``form`` is ``False``.
 
@@ -366,7 +366,7 @@ def either(form, f, g):
         return g()
     return func
 
-def on_change(form, *args, **kwargs):
+def on_change(form: Formula | Term, *args, **kwargs):
     """Use as a decorator: If a Formula's truthiness is True, call the
     decorated function.
 
@@ -396,7 +396,7 @@ def verify_all(law: Law):
         return True
 
 
-def _specialize_helper(law: Law, parent=None):
+def _specialize_helper(law: Law | Variable, parent=None):
     if isinstance(law, Variable):
         if parent is not None:
             law._temp_value._parents.append(parent)
@@ -427,7 +427,7 @@ def _specialize_helper(law: Law, parent=None):
             return form
 
 
-def _specialize(law: Law, subs: list[Term]):
+def _specialize(law: Law | Variable, subs: list[Term]):
     """Generates a Formula for the specified Terms."""
     if isinstance(law, Variable):
         return subs[0]
@@ -440,12 +440,10 @@ class Universe:
     entities: Term[Any] = field(default_factory=list)
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
-def _law_register_bin_op(bin_op):
+def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __add__) for Formula and Term."""
-    def b(self, other):
-        if isinstance(self, Variable):
-            self.variables = [self]
+    def b(self: Law | Variable, other: Law | Variable | Number):
         if isinstance(other, Number):
             other = Term(other)
             vc = self._var_count
@@ -469,10 +467,10 @@ def _law_register_bin_op(bin_op):
         return law
     return b
 
-def _law_register_rbin_op(bin_op):
+def _law_register_rbin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __radd__) for Formula and Term."""
-    def b(self, other):
+    def b(self: Law, other):
         if isinstance(self, Variable):
             self.variables = []
         if isinstance(other, Number) or isinstance(other, Term):
@@ -525,7 +523,7 @@ class Variable:
     _parents: list[Law] = field(default_factory=list)
 
     def __post_init__(self):
-        self.variables = self
+        self.variables: list[Variable] = [self]
 
     # Binary operations
     __add__ = _law_register_bin_op(operator.add)
@@ -567,10 +565,10 @@ class Variable:
 class Law:
     universe: Universe
     variables: list[Variable] = field(default_factory=list)
-    unary_op: Callable[[Any], Any] = None
-    _lhs: Formula = None,
-    bin_op: Callable[[Any, Any], Any] = None 
-    _rhs: Formula = None
+    unary_op: Callable[[Any], Any] | None = None
+    _lhs: Law | None = None
+    bin_op: Callable[[Any, Any], Any] | None = None 
+    _rhs: Law | None = None
     _parents: list[Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
@@ -620,7 +618,7 @@ class Law:
     __rne__ = _law_register_rbin_op(operator.ne)
 
 
-def fire_on_each(law, *args, **kwarg):
+def fire_on_each(law: Law, *args, **kwarg):
     """Use as a decorator: If some specialization of a Law's truthiness is 
     True, call the decorated function.
 
