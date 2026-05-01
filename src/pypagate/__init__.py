@@ -99,9 +99,9 @@ class Formula:
     operators."""
     _value: Any = None
     unary_op: Callable[[Any], Any] | None = None
-    _lhs: Formula | None = None
+    _lhs: Formula | Term | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    _rhs: Formula | None = None
+    _rhs: Formula | Term | None = None
     _parents: list[Formula] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
@@ -575,9 +575,9 @@ class Law:
     universe: Universe
     variables: list[Variable] = field(default_factory=list)
     unary_op: Callable[[Any], Any] | None = None
-    _lhs: Law | None = None
+    _lhs: Law | Variable | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    _rhs: Law | None = None
+    _rhs: Law | Variable | None = None
     _parents: list[Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
