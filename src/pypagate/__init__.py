@@ -70,6 +70,7 @@ def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
         if isinstance(other, Number):
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
+        assert isinstance(other, Formula) or isinstance(other, Term)
         formula = Formula(bin_op=bin_op, _lhs=self, _rhs=other)
         self._parents.append(formula)
         other._parents.append(formula)
@@ -84,6 +85,7 @@ def _register_rbin_op(bin_op: Callable[[Any, Any], Any]):
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
         # Order of params are switched for the r version!
+        assert isinstance(other, Term) or isinstance(other, Formula)
         formula = Formula(bin_op=bin_op, _lhs=other, _rhs=self)
         self._parents.append(formula)
         other._parents.append(formula)
@@ -455,10 +457,8 @@ def _specialize_helper(law: Law | Variable | Term | None, parent=None):
             return form
 
 
-def _specialize(law: Law | Variable, subs: list[Term]):
+def _specialize(law: Law | Variable, subs: tuple[Term, ...]):
     """Generates a Formula for the specified Terms."""
-    if isinstance(law, Variable):
-        return subs[0]
     for i, var in enumerate(law.variables):
         var._temp_value = subs[i]
     return _specialize_helper(law)
@@ -472,10 +472,11 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     """Helper function intended to help construct binary operations (like 
     __add__) for Formula and Term."""
     def b(self: Law | Variable, other: Law | Variable | Number | Literal):
-        if isinstance(other, Number):
+        if isinstance(other, Number) or type(other) is Literal:
             other = Term(other) # pyrefly: ignore[bad-assignment]
                                 # Need to cast for ease of use!
             vc = self._var_count
+            assert isinstance(other, Term)
             law = Law(self.universe,
                       self.variables,
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
@@ -486,6 +487,7 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
         else:
             vc = self._var_count + other._var_count
+            assert isinstance(other, Law)
             law = Law(self.universe,
                       self.variables + other.variables,
                       bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
@@ -608,7 +610,7 @@ class Law:
     _var_count: int = 0
     _specializations: list[Formula] = field(default_factory=list)
     
-    def __post_init__(self):
+    def __post_init__(self: Law):
         substitutions = product(self.universe.entities, repeat=self._var_count)
         # The law is the union of the specialization.
         for substitution in substitutions:
