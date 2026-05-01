@@ -370,7 +370,7 @@ def permit(form: Formula | Term, *args, **kwargs):
         return f
     return permit_decorator
 
-def either(form: Formula | Term, f: Callable[[]], g: Callable[[]]):
+def either(form: Formula | Term, f: Callable[[], None], g: Callable[[], None]):
     """Creates a new function with name ``name`` that, when called, executes
     ``f`` when ``form`` is ``True`` and ``g`` when ``form`` is ``False``.
 
@@ -582,7 +582,6 @@ class Variable:
     __req__ = _law_register_rbin_op(operator.eq) # pyrefly: ignore[bad-override]
     __ne__ = _law_register_bin_op(operator.ne) # pyrefly: ignore[bad-override]
     __rne__ = _law_register_rbin_op(operator.ne) # pyrefly: ignore[bad-override]
-
 
 
 @dataclass
