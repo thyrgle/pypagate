@@ -15,6 +15,8 @@ Let us consider a small example to clarify the barrage of objects.
 
 .. code-block:: python
 
+   from pypagate import Term, Universe, Variable, fire_on_each
+
    # Define some entities to place in our universe.
    v1, v2 = Term(0), Term(0)
    # Place them in some universe.
