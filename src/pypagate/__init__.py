@@ -8,7 +8,7 @@ from typing import Any, Literal
 from functools import reduce
 
 
-def evaluate(form: Formula | Term | 'Variable') -> Any:
+def evaluate(form: Formula | Term ) -> Any:
     """Given a Term or Formula get the *current* value it contains. For terms
     this is the same as .unwrap() method, but for for Formula, the entire
     expression is recursively evaluated.
@@ -115,7 +115,7 @@ class Formula:
     _value: Any = None
     unary_op: Callable[[Any], Any] | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    operands: list['Formula' | 'Term' | 'Variable' | 'Law'] = field(default_factory=list)    
+    operands: list['Formula' | 'Term' ] = field(default_factory=list)    
     _parents: list[Formula | Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
@@ -429,14 +429,16 @@ def verify_all(law: Law):
         return True
 
 
-def _specialize_helper(law: Law | Variable | Term | None, parent=None):
+def _specialize_helper(law: 'Law' | 'Variable' | 'Term' | 'Formula' | None, parent=None):
     if law is None:
         return None
     if isinstance(law, Variable):
         if parent is not None:
             law._temp_value._parents.append(parent)
         return law._temp_value
-    elif isinstance(law, Term):
+    elif isinstance(law, (Term, Formula)):
+        if parent is not None:
+            law._parents.append(parent)
         return law
     else:
         if law.bin_op is None:
@@ -469,16 +471,16 @@ class Universe:
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
-    def b(self: Law | Variable, other: Law | Variable | Number | Literal):
+    def b(self: Law | Variable, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
         if isinstance(other, Number) or type(other) is Literal:
-            other = Term(other)
+            other = Term(other) # pyrefly: ignore[bad-assignment]
             
-        assert isinstance(other, (Law, Variable, Term))
+        assert isinstance(other, (Law, Variable, Formula, Term))
         left_ops = self.operands if isinstance(self, Law) and self.bin_op == bin_op else [self]
         right_ops = other.operands if isinstance(other, Law) and getattr(other, 'bin_op', None) == bin_op else [other]
         new_operands = left_ops + right_ops
         
-        if isinstance(other, Term):
+        if isinstance(other, (Term, Formula)):
             vc = self._var_count
             vars_list = self.variables
         elif isinstance(other, Variable):
@@ -495,16 +497,16 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     return b
 
 def _law_register_rbin_op(bin_op: Callable[[Any, Any], Any]):
-    def b(self: Law, other):
+    def b(self: Law, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
         if isinstance(other, Number) or type(other) is Literal:
-            other = Term(other)
+            other = Term(other) # pyrefly: ignore[bad-assignment]
             
-        assert isinstance(other, (Law, Variable, Term))
+        assert isinstance(other, (Law, Variable, Formula, Term))
         left_ops = other.operands if isinstance(other, Law) and getattr(other, 'bin_op', None) == bin_op else [other]
         right_ops = self.operands if isinstance(self, Law) and self.bin_op == bin_op else [self]
         new_operands = left_ops + right_ops
         
-        if isinstance(other, Term):
+        if isinstance(other, (Term, Formula)):
             vc = self._var_count
             vars_list = self.variables
         elif isinstance(other, Variable):
@@ -585,7 +587,7 @@ class Law:
     variables: list[Variable] = field(default_factory=list)
     unary_op: Callable[[Any], Any] | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    operands: list['Formula' | 'Term' | 'Variable' | 'Law'] = field(default_factory=list)
+    operands: list['Law' | 'Variable' | 'Term' | 'Formula'] = field(default_factory=list)
     _parents: list[Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
