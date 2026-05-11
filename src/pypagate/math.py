@@ -9,7 +9,7 @@ def _reactive_unary(func):
         if isinstance(x, Number):
             x = Term(x)
         # Generate the reactive node
-        formula = Formula(unary_op=func, _rhs=x)
+        formula = Formula(unary_op=func, operands=[x])
         # Bind the node to the parent to ensure signal propagation
         x._parents.append(formula)
         return formula

@@ -5,9 +5,10 @@ from itertools import product
 from numbers import Number
 import operator
 from typing import Any, Literal
+from functools import reduce
 
 
-def evaluate(form: Formula | Term):
+def evaluate(form: Formula | Term ) -> Any:
     """Given a Term or Formula get the *current* value it contains. For terms
     this is the same as .unwrap() method, but for for Formula, the entire
     expression is recursively evaluated.
@@ -20,18 +21,15 @@ def evaluate(form: Formula | Term):
     if isinstance(form, Term) or (not form._needs_update):
         return form.unwrap()
     else: # Otherwise, recursively evaluate.
-        # Either formula f(smaller_formula) or small_formula x small_formula2
         if form.bin_op is None:
-            assert form._rhs is not None
+            assert form.operands
             assert form.unary_op is not None
-            return form.unary_op(evaluate(form._rhs))
+            return form.unary_op(evaluate(form.operands[0]))
         else:
-            assert form._lhs is not None
-            assert form._rhs is not None
-            return form.bin_op(
-                    evaluate(form._lhs), 
-                    evaluate(form._rhs)
-                )
+            assert len(form.operands) >= 2
+            # Resolve all dependencies at once, then reduce them using the operator
+            evaluated_ops = [evaluate(op) for op in form.operands]
+            return reduce(form.bin_op, evaluated_ops)
 
 # String representation for unary and binary operations. Used in __str__ for
 # a Formula
@@ -64,42 +62,51 @@ __unary_str_map = {
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _register_bin_op(bin_op: Callable[[Any, Any], Any]):
-    """Helper function intended to help construct binary operations (like 
-    __add__) for Formula and Term."""
+    """Helper function intended to help construct binary operations."""
     def b(self: Formula | Term, other: Formula | Term | Number | Literal):
         if isinstance(other, Number):
-            other = Term(other) # pyrefly: ignore[bad-assignment]
-                                # Need to cast for ease of use!
+            other = Term(other)
         assert isinstance(other, Formula) or isinstance(other, Term)
-        formula = Formula(bin_op=bin_op, _lhs=self, _rhs=other)
-        self._parents.append(formula)
-        other._parents.append(formula)
+        
+        # The N-Ary Interceptor: Flatten left and right if they share the exact same operator
+        left_ops = self.operands if isinstance(self, Formula) and self.bin_op == bin_op else [self]
+        right_ops = other.operands if isinstance(other, Formula) and other.bin_op == bin_op else [other]
+        
+        new_operands = left_ops + right_ops
+        formula = Formula(bin_op=bin_op, operands=new_operands)
+        
+        # Wire the new master formula as the parent to all flat operands
+        for op in new_operands:
+            op._parents.append(formula)
         return formula
     return b
 
 def _register_rbin_op(bin_op: Callable[[Any, Any], Any]):
-    """Helper function intended to help construct binary operations (like 
-    __radd__) for Formula and Term."""
+    """Helper function intended to help construct binary operations (reversed)."""
     def b(self: Formula | Term, other: Formula | Term | Number | Literal):
         if isinstance(other, Number):
-            other = Term(other) # pyrefly: ignore[bad-assignment]
-                                # Need to cast for ease of use!
-        # Order of params are switched for the r version!
+            other = Term(other)
         assert isinstance(other, Term) or isinstance(other, Formula)
-        formula = Formula(bin_op=bin_op, _lhs=other, _rhs=self)
-        self._parents.append(formula)
-        other._parents.append(formula)
+        
+        # The N-Ary Interceptor (Reversed Order)
+        left_ops = other.operands if isinstance(other, Formula) and other.bin_op == bin_op else [other]
+        right_ops = self.operands if isinstance(self, Formula) and self.bin_op == bin_op else [self]
+        
+        new_operands = left_ops + right_ops
+        formula = Formula(bin_op=bin_op, operands=new_operands)
+        
+        for op in new_operands:
+            op._parents.append(formula)
         return formula
     return b
 
 def _register_unary_op(unary_op: Callable[[Any], Any]):
-    """Helper function inteded to help construct unary operations (like
-    __abs__) for Formula and Term."""
+    """Helper function intended to help construct unary operations."""
     def u(self: Formula | Term):
-        formula = Formula(unary_op=unary_op, _rhs=self)
+        formula = Formula(unary_op=unary_op, operands=[self])
         self._parents.append(formula)
         return formula
-    return u 
+    return u
 
 @dataclass
 class Formula:
@@ -107,9 +114,8 @@ class Formula:
     operators."""
     _value: Any = None
     unary_op: Callable[[Any], Any] | None = None
-    _lhs: Formula | Term | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    _rhs: Formula | Term | None = None
+    operands: list['Formula' | 'Term' ] = field(default_factory=list)    
     _parents: list[Formula | Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
@@ -156,10 +162,13 @@ class Formula:
         if not self.bin_op:
             unary_map = globals().get("__unary_str_map", {})
             op_name = unary_map.get(self.unary_op, getattr(self.unary_op, "__name__", "op"))
-            return op_name + " (" + str(self._rhs) + ")"
+            # Unary operations only have one operand
+            return op_name + " (" + str(self.operands[0]) + ")"
             
         bin_map = globals().get("__bin_str_map", {})
-        return f"({str(self._lhs)}) {bin_map.get(self.bin_op, 'op')} ({str(self._rhs)})"    
+        op_str = f" {bin_map.get(self.bin_op, 'op')} "
+        # N-ary string representation: join all operands with the operator
+        return "(" + op_str.join(str(op) for op in self.operands) + ")"  
     
     # Binary operations
     __add__ = _register_bin_op(operator.add)
@@ -420,40 +429,33 @@ def verify_all(law: Law):
         return True
 
 
-def _specialize_helper(law: Law | Variable | Term | None, parent=None):
+def _specialize_helper(law: 'Law' | 'Variable' | 'Term' | 'Formula' | None, parent=None):
     if law is None:
         return None
     if isinstance(law, Variable):
         if parent is not None:
             law._temp_value._parents.append(parent)
         return law._temp_value
-    elif isinstance(law, Term):
+    elif isinstance(law, (Term, Formula)):
+        if parent is not None:
+            law._parents.append(parent)
         return law
     else:
         if law.bin_op is None:
             assert law.unary_op is not None
-            form = Formula(unary_op=law.unary_op,
-                           _rhs=None)
-            assert law._rhs is not None
-            rhs = _specialize_helper(law._rhs, parent=form)
-            form._rhs = rhs
+            form = Formula(unary_op=law.unary_op, operands=[])
+            assert law.operands
+            op_resolved = _specialize_helper(law.operands[0], parent=form)
+            form.operands = [op_resolved]
             if parent is not None:
-                form._parents.extend(parent)
+                form._parents.append(parent)
             return form     
         else:
-            form = Formula(
-                    bin_op=law.bin_op,
-                    _lhs=None,
-                    _rhs=None
-                   )
-            assert law._lhs is not None
-            lhs = _specialize_helper(law._lhs, parent=form)
-            assert law._rhs is not None
-            rhs = _specialize_helper(law._rhs, parent=form)
-            form._lhs = lhs
-            form._rhs = rhs
+            form = Formula(bin_op=law.bin_op, operands=[])
+            assert law.operands
+            form.operands = [_specialize_helper(op, parent=form) for op in law.operands]
             if parent is not None:
-                form._parents.extend(parent)
+                form._parents.append(parent)
             return form
 
 
@@ -469,82 +471,67 @@ class Universe:
 
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
-    """Helper function intended to help construct binary operations (like 
-    __add__) for Formula and Term."""
-    def b(self: Law | Variable, other: Law | Variable | Number | Literal):
+    def b(self: Law | Variable, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
         if isinstance(other, Number) or type(other) is Literal:
             other = Term(other) # pyrefly: ignore[bad-assignment]
-                                # Need to cast for ease of use!
+            
+        assert isinstance(other, (Law, Variable, Formula, Term))
+        left_ops = self.operands if isinstance(self, Law) and self.bin_op == bin_op else [self]
+        right_ops = other.operands if isinstance(other, Law) and getattr(other, 'bin_op', None) == bin_op else [other]
+        new_operands = left_ops + right_ops
+        
+        if isinstance(other, (Term, Formula)):
             vc = self._var_count
-            assert isinstance(other, Term)
-            law = Law(self.universe,
-                      self.variables,
-                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+            vars_list = self.variables
         elif isinstance(other, Variable):
             vc = self._var_count
-            law = Law(self.universe,
-                      self.variables + [other],
-                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
-        else:
-            vc = self._var_count + other._var_count
-            assert isinstance(other, Law)
-            law = Law(self.universe,
-                      self.variables + other.variables,
-                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+            vars_list = self.variables + [other]
+        else: # Law
+            vc = getattr(self, '_var_count', 0) + getattr(other, '_var_count', 0)
+            vars_list = self.variables + other.variables
+
+        law = Law(self.universe, vars_list, bin_op=bin_op, operands=new_operands, _var_count=vc)
         self._parents.append(law)
-        other._parents.append(law) # pyrefly: ignore[missing-attribute]
-                                   # other is gaurenteed to have _parents. If 
-                                   # it were a Number, it gets reassigned to a 
-                                   # Term.
+        other._parents.append(law)
         return law
     return b
 
 def _law_register_rbin_op(bin_op: Callable[[Any, Any], Any]):
-    """Helper function intended to help construct binary operations (like 
-    __radd__) for Formula and Term."""
-    def b(self: Law, other):
-        if isinstance(other, Number) or isinstance(other, Term):
-            other = Term(other)
-            assert isinstance(other, Term)
+    def b(self: Law, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
+        if isinstance(other, Number) or type(other) is Literal:
+            other = Term(other) # pyrefly: ignore[bad-assignment]
+            
+        assert isinstance(other, (Law, Variable, Formula, Term))
+        left_ops = other.operands if isinstance(other, Law) and getattr(other, 'bin_op', None) == bin_op else [other]
+        right_ops = self.operands if isinstance(self, Law) and self.bin_op == bin_op else [self]
+        new_operands = left_ops + right_ops
+        
+        if isinstance(other, (Term, Formula)):
             vc = self._var_count
-            # Order of params are switched for the r version!
-            law = Law(self.universe,
-                      self.variables,
-                      bin_op=bin_op, _lhs=other, _rhs=self, _var_count=vc)
+            vars_list = self.variables
         elif isinstance(other, Variable):
             vc = self._var_count + 1
-            # Order of params are switched for the r version!
-            law = Law(self.universe,
-                      self.variables + [other],
-                      bin_op=bin_op, _lhs=other, _rhs=self, _var_count=vc)
+            vars_list = self.variables + [other]
         else:
-            vc = self._var_count + other._var_count
-            law = Law(self.universe,
-                      self.variables + other.variables,
-                      bin_op=bin_op, _lhs=self, _rhs=other, _var_count=vc)
+            vc = self._var_count + getattr(other, '_var_count', 0)
+            vars_list = self.variables + other.variables
+            
+        law = Law(self.universe, vars_list, bin_op=bin_op, operands=new_operands, _var_count=vc)
         self._parents.append(law)
-        if isinstance(other, Term):
-            other._parents.append(law)
-        elif isinstance(other, Formula):
-            other._parents.append(law)
+        other._parents.append(law)
         return law
     return b
 
 def _law_register_unary_op(unary_op):
-    """Helper function inteded to help construct unary operations (like
-    __abs__) for Formula and Term."""
     def u(self):
         if isinstance(self, Variable):
-            return Law(self.universe,
-                       [self],
-                       unary_op=unary_op, _rhs=self, _var_count=1)
-        vc = self._var_count
-        law = Law(self.universe,
-                  self.variables,
-                  unary_op=unary_op, _rhs=self, _var_count=vc)
+            law = Law(self.universe, [self], unary_op=unary_op, operands=[self], _var_count=1)
+        else:
+            vc = self._var_count
+            law = Law(self.universe, self.variables, unary_op=unary_op, operands=[self], _var_count=vc)
         self._parents.append(law)
         return law
-    return u 
+    return u
 
 
 @dataclass
@@ -599,9 +586,8 @@ class Law:
     universe: Universe
     variables: list[Variable] = field(default_factory=list)
     unary_op: Callable[[Any], Any] | None = None
-    _lhs: Law | Variable | Term | None = None
     bin_op: Callable[[Any, Any], Any] | None = None 
-    _rhs: Law | Variable | Term | None = None
+    operands: list['Law' | 'Variable' | 'Term' | 'Formula'] = field(default_factory=list)
     _parents: list[Law] = field(default_factory=list)
     _binds: Any = field(default_factory=list)
     _fire_on: list[Callable] = field(default_factory=list)
