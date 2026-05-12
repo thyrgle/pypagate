@@ -123,21 +123,31 @@ class Formula:
     _needs_update: bool = True
 
     def _update(self):
+        # Capture the old truth state before mutation
+        old_truth = bool(self._value) if not self._needs_update else False
         new_value = evaluate(self)
-        # For the on_change decorator.
+        new_truth = bool(new_value)
+        
         if new_value != self._value:
             for func in self._on_change:
                 func(self._value, new_value)
+        
         self._value = new_value
+        self._needs_update = False
+
         for parent in self._parents:
             parent._needs_update = True
+            # The Cache Trigger: Only notify Laws if the boolean boundary was crossed
+            if isinstance(parent, Law) and old_truth != new_truth:
+                parent._notify_truth_flip(self, new_truth)
             parent._update()
+            
         for obj, field_name in self._binds:
             setattr(obj, field_name, self._value)
+            
         for func in self._fire_on:
-            if self.unwrap(): # If the value has True truthiness, call the 
-                 func()       # function.
-        self._needs_update = False
+            if self.unwrap():
+                 func()
 
     def _propegate(self):
         for parent in self._parents:
@@ -417,16 +427,10 @@ def on_change(form: Formula | Term, *args, **kwargs):
 
 
 def verify_any(law: Law):
-    for instance in law._specializations:
-        if instance.unwrap():
-            return True
-    return False
+    return len(law._true_cache) > 0
 
 def verify_all(law: Law):
-    for instance in law._specializations:
-        if not instance.unwrap():
-            return False
-        return True
+    return len(law._false_cache) == 0
 
 
 def _specialize_helper(law: 'Law' | 'Variable' | 'Term' | 'Formula' | None, parent=None):
@@ -595,12 +599,30 @@ class Law:
     _needs_update: bool = True
     _var_count: int = 0
     _specializations: list[Formula] = field(default_factory=list)
+    _true_cache: dict[int, Formula] = field(default_factory=dict) 
+    _false_cache: dict[int, Formula] = field(default_factory=dict)
     
     def __post_init__(self: Law):
         substitutions = product(self.universe.entities, repeat=self._var_count)
         # The law is the union of the specialization.
         for substitution in substitutions:
-            self._specializations.append(_specialize(self, substitution))
+            form = _specialize(self, substitution)
+            self._specializations.append(form)
+            # Initialize the cache using memory ID
+            if form.unwrap():
+                self._true_cache[id(form)] = form
+            else:
+                self._false_cache[id(form)] = form
+
+    def _notify_truth_flip(self, formula: Formula, new_truth: bool):
+        """O(1) memory reassignment using object identity."""
+        fid = id(formula)
+        if new_truth:
+            self._false_cache.pop(fid, None)
+            self._true_cache[fid] = formula
+        else:
+            self._true_cache.pop(fid, None)
+            self._false_cache[fid] = formula
 
     def _update(self):
         for formula in self._specializations:
