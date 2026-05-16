@@ -681,3 +681,40 @@ def fire_on_each(law: Law, *args, **kwarg):
             form._fire_on.append(wrapped)
         return func
     return fire_decorator
+def fire_on_all(law, *args, **kwargs):
+    """Raw Evaluation: Bypasses the cache and queries the Universe directly."""
+    def fire_decorator(func):
+        def check_all():
+            return all(f.unwrap() for f in law._specializations)
+            
+        state = {"was_all": check_all()}
+
+        def wrapped():
+            is_all = check_all()
+            if is_all and not state["was_all"]:
+                func(*args, **kwargs)
+            state["was_all"] = is_all
+
+        for form in law._specializations:
+            form._fire_on.append(wrapped)
+        return func
+    return fire_decorator
+
+def fire_on_some(law, n: int, *args, **kwargs):
+    """Raw Evaluation: Bypasses the cache and queries the Universe directly."""
+    def fire_decorator(func):
+        def count_true():
+            return sum(1 for f in law._specializations if f.unwrap())
+            
+        state = {"was_some": count_true() >= n}
+
+        def wrapped():
+            is_some = count_true() >= n
+            if is_some and not state["was_some"]:
+                func(*args, **kwargs)
+            state["was_some"] = is_some
+
+        for form in law._specializations:
+            form._fire_on.append(wrapped)
+        return func
+    return fire_decorator
