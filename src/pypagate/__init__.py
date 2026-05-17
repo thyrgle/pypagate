@@ -473,6 +473,16 @@ def _specialize(law: Law | Variable, subs: tuple[Term, ...]):
 class Universe:
     entities: list[Term] = field(default_factory=list)
 
+@dataclass
+class Bucket:
+    """A linear-time spatial partition to restrict O(N^k) Law searches."""
+    universe: 'Universe'
+    condition: Callable[['Term'], bool]
+    
+    @property
+    def entities(self) -> list['Term']:
+        return [entity for entity in self.universe.entities if self.condition(entity)]
+    
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     def b(self: Law | Variable, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
@@ -488,7 +498,7 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
             vc = self._var_count
             vars_list = self.variables
         elif isinstance(other, Variable):
-            vc = self._var_count
+            vc = self._var_count + 1
             vars_list = self.variables + [other]
         else: # Law
             vc = getattr(self, '_var_count', 0) + getattr(other, '_var_count', 0)
