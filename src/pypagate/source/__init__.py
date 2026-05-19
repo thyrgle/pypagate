@@ -7,7 +7,7 @@ class SourceMap:
     """A collection of Terms (with starting values) where Terms can 
         be updated with the `listen` method."""
     def __init__(self, terms: dict[str, Number]):
-        for name, value in terms:
+        for name, value in terms.items():
             self.__dict__[name] = Term(value)
 
         self._exec_while: list[tuple[Formula, Callable]] = []
