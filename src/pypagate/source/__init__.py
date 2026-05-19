@@ -23,7 +23,7 @@ class SourceMap:
             will then update the values in `self`.
         """
         # Update the values.
-        for name, value in terms:
+        for name, value in terms.items():
             self[name].change(value)
         # Issue an evaluation of every formula from these terms.
         for form, func in self._exec_while:
