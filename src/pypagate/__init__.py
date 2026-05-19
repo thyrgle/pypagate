@@ -473,6 +473,16 @@ def _specialize(law: Law | Variable, subs: tuple[Term, ...]):
 class Universe:
     entities: list[Term] = field(default_factory=list)
 
+@dataclass
+class Bucket:
+    """A linear-time spatial partition to restrict O(N^k) Law searches."""
+    universe: 'Universe'
+    condition: Callable[['Term'], bool]
+    
+    @property
+    def entities(self) -> list['Term']:
+        return [entity for entity in self.universe.entities if self.condition(entity)]
+    
 # Similar to here https://stackoverflow.com/a/7844038/667648
 def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
     def b(self: Law | Variable, other: 'Law' | 'Variable' | 'Formula' | 'Term' | Number | Literal):
@@ -488,7 +498,7 @@ def _law_register_bin_op(bin_op: Callable[[Any, Any], Any]):
             vc = self._var_count
             vars_list = self.variables
         elif isinstance(other, Variable):
-            vc = self._var_count
+            vc = self._var_count + 1
             vars_list = self.variables + [other]
         else: # Law
             vc = getattr(self, '_var_count', 0) + getattr(other, '_var_count', 0)
@@ -677,6 +687,43 @@ def fire_on_each(law: Law, *args, **kwarg):
     def fire_decorator(func):
         def wrapped():
             return func(*args, **kwarg)
+        for form in law._specializations:
+            form._fire_on.append(wrapped)
+        return func
+    return fire_decorator
+def fire_on_all(law, *args, **kwargs):
+    """Raw Evaluation: Bypasses the cache and queries the Universe directly."""
+    def fire_decorator(func):
+        def check_all():
+            return all(f.unwrap() for f in law._specializations)
+            
+        state = {"was_all": check_all()}
+
+        def wrapped():
+            is_all = check_all()
+            if is_all and not state["was_all"]:
+                func(*args, **kwargs)
+            state["was_all"] = is_all
+
+        for form in law._specializations:
+            form._fire_on.append(wrapped)
+        return func
+    return fire_decorator
+
+def fire_on_some(law, n: int, *args, **kwargs):
+    """Raw Evaluation: Bypasses the cache and queries the Universe directly."""
+    def fire_decorator(func):
+        def count_true():
+            return sum(1 for f in law._specializations if f.unwrap())
+            
+        state = {"was_some": count_true() >= n}
+
+        def wrapped():
+            is_some = count_true() >= n
+            if is_some and not state["was_some"]:
+                func(*args, **kwargs)
+            state["was_some"] = is_some
+
         for form in law._specializations:
             form._fire_on.append(wrapped)
         return func
