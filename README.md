@@ -15,7 +15,7 @@ Now, imagine you are working with Python to do the same thing. You input the stu
 
 You then realized you need to update the score of one student, so you change the corresponding entry in `scores` but *unlike* the Excel scenario, the mean is not magically updated. Sure, you *could* call `mean` again and recalculate the new scores, but would it not be cool if you just had a variable that always updated accordingly?
 
-## Enter functional reactive programming
+## Enter formulae
 
 The core idea in this library is that the cells in Excel which contain data we manually update, and there are cells in Excel which update based on data. The cells we manually update we refer to as `Terms` and the cells that automatically update are referred to as `Formula`s.
 
@@ -34,7 +34,7 @@ Let us look at a small example:
 7
 ```
 
-`y` magically changed even though we never touched it. This is the power of *functional reactive programming*.
+`y` magically changed even though we never touched it.
 
 ## But wait, there's more!
 
