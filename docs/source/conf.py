@@ -19,7 +19,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.autodoc'
 ]
-numpydoc_show_class_members = False
 
 templates_path = ['_templates']
 exclude_patterns = []
