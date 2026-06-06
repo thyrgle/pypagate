@@ -1,8 +1,8 @@
 API
 ===
 
-.. automodapi:: pypagate
+.. automodule:: pypagate
    :no-inheritance-diagram:
 
-.. automodapi:: pypagate.source
+.. automodule:: pypagate.source
    :no-inheritance-diagram:

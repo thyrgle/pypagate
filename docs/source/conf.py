@@ -17,7 +17,7 @@ release = '0.3.1'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx_automodapi.automodapi'
+    'sphinx.ext.autodoc'
 ]
 numpydoc_show_class_members = False
 
