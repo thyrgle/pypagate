@@ -25,5 +25,4 @@ dev = [
 ]
 docs = [
     "sphinx>=9.0.4",
-    "sphinx-automodapi>=0.22.0",
 ]

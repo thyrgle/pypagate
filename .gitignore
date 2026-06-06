@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Sphinx
+docs/_build/*
+docs/source_build/*
