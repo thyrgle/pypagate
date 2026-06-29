@@ -1,4 +1,6 @@
-# pypagate
+<p align="center">
+  <img src="pypagate_logo.svg" alt="pypagate">
+</p>
 
 ## What is pypagate?
 
