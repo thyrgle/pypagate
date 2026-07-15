@@ -2,6 +2,8 @@
   <img src="pypagate_logo.svg" alt="pypagate">
 </p>
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/thyrgle/pypagate/pytest.yml)
+
 ## Quick Install
 
 If you use [pip](https://pypi.org/project/pip/):
