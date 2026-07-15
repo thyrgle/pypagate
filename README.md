@@ -4,6 +4,8 @@
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/thyrgle/pypagate/pytest.yml)
 
+A dead simple reactive library based on mathematical formulae.
+
 ## Quick Install
 
 If you use [pip](https://pypi.org/project/pip/):
