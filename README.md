@@ -2,6 +2,20 @@
   <img src="pypagate_logo.svg" alt="pypagate">
 </p>
 
+## Quick Install
+
+If you use [pip](https://pypi.org/project/pip/):
+
+```
+pip install pypagate
+```
+
+If you use [uv](https://github.com/astral-sh/uv):
+
+```
+uv add pypagate
+```
+
 ## What is pypagate?
 
 Imagine you are working in a spreadsheet editor such as Excel. You write in a bunch of test scores and then use a formula to calculate the average of all the students. You mistakenly gave one student the wrong score. No worries, you update the score and the average is magically updated.
